@@ -1,0 +1,428 @@
+SMART X - UI DESIGN SPECIFICATION
+===================================
+
+Project:
+Smart X
+
+Purpose:
+This file records the important visual and UI design decisions for the Smart X
+Avalonia desktop application so that future screens can follow the same design.
+
+--------------------------------------------------
+1. APPLICATION STYLE
+--------------------------------------------------
+
+UI framework:
+- Avalonia UI
+- C#
+
+Overall visual style:
+- Dark blue engineering / control-system interface
+- Simple and practical rather than highly polished or futuristic
+- Designed to look like a real student-built desktop application
+- Clear hierarchy and readable controls
+- Avoid excessive cards, badges, gradients, animations, or decorative elements
+
+Application window:
+- Title: Smart X
+- Main window size: 650 x 850
+- Dark background
+- Comfortable margins around the content
+
+
+--------------------------------------------------
+2. COLOUR PALETTE
+--------------------------------------------------
+
+Primary background:
+#0B1624
+Very dark navy. Used as the main application background.
+
+Panel / button background:
+#13263A
+Dark blue. Used for enabled buttons and main content panels.
+
+Button hover:
+#19354A
+Slightly lighter blue used when the mouse is over an enabled button.
+
+Button pressed:
+#1D4055
+Used while an enabled button is being pressed.
+
+Border:
+#24445A
+Subtle blue-grey border used around controls and separators.
+
+Primary blue accent:
+#55B5D9
+Used for active module icons and important blue accents.
+
+Secondary blue:
+#6FA8C4
+Used for secondary headings and supporting interface text.
+
+Main text:
+#E8F0F5
+Light blue-white used for primary readable text.
+
+Secondary text:
+#91A5B5
+Muted blue-grey used for descriptions and supporting information.
+
+Disabled text:
+#607384
+Muted blue-grey used for unavailable modules.
+
+Disabled background:
+#101D2B
+Dark muted navy used for disabled controls.
+
+Disabled icon background:
+#182735
+
+Green accent:
+#35B86B
+Used to indicate available/active/ready functionality.
+
+Green status background:
+#102A22
+
+Green status border:
+#245C43
+
+Green status text:
+#8FC9A8
+
+
+--------------------------------------------------
+3. HEADER
+--------------------------------------------------
+
+Main title:
+- Text: "Smart X"
+- Font size: 30
+- Font weight: SemiBold
+- Colour: #E8F0F5
+
+Subtitle:
+- Text: "System Control Interface"
+- Font size: 15
+- Colour: #6FA8C4
+
+A thin horizontal separator appears below the header:
+- Height: 1
+- Colour: #24445A
+
+The header should remain simple and should not use large logos,
+glowing effects, or excessive branding.
+
+
+--------------------------------------------------
+4. MAIN MODULE SECTION
+--------------------------------------------------
+
+Section heading:
+- Text: "System Modules"
+- Font size: 17
+- Font weight: SemiBold
+- Colour: #D8E5EC
+
+Modules are displayed as large horizontal buttons.
+
+Button characteristics:
+- Background: #13263A
+- Border: 1px solid #24445A
+- Corner radius: 6
+- Padding: 18
+- Horizontal content alignment: Stretch
+- Moderate spacing between buttons
+
+Buttons should look like normal application controls rather than
+large floating dashboard cards.
+
+
+--------------------------------------------------
+5. MODULE ICONS
+--------------------------------------------------
+
+Icons are intentionally simple text-based identifiers.
+
+Sensor Data:
+- Letter: S
+- Font size: 21
+- Bold
+- Colour: #55B5D9
+- Background: #123B50
+- Corner radius: 6
+
+Command Stream:
+- Letter: C
+- Font size: 21
+- Bold
+- Colour: #607384
+- Background: #182735
+- Corner radius: 6
+
+Network:
+- Letter: N
+- Font size: 21
+- Bold
+- Colour: #607384
+- Background: #182735
+- Corner radius: 6
+
+Do not replace these with elaborate icons unless the overall design
+is changed consistently.
+
+
+--------------------------------------------------
+6. ARCHITECTURAL PILLARS
+--------------------------------------------------
+
+Pillar 1:
+Sensor Data Ingestion
+
+Description:
+"Ingest and monitor sensor telemetry."
+
+Status:
+"Available"
+
+Colour:
+Green (#35B86B)
+
+This is the currently active module and should be visually distinct.
+
+
+Pillar 2:
+Real-Time Command Stream
+
+Description:
+"Command stream and history."
+
+Status:
+"Disabled - Part 2"
+
+This button must remain disabled until Part 2 is implemented.
+
+
+Pillar 3:
+Network Topology and Mesh Routing
+
+Description:
+"Network topology and mesh routing."
+
+Status:
+"Disabled - Final PoE"
+
+This button must remain disabled until the final PoE implementation.
+
+
+--------------------------------------------------
+7. BUTTON STATES
+--------------------------------------------------
+
+Normal enabled:
+Background: #13263A
+Border: #24445A
+Text: #E8F0F5
+
+Hover:
+Background: #19354A
+Border: #35B86B
+
+Pressed:
+Background: #1D4055
+
+Disabled:
+Background: #101D2B
+Border: #1A2C3D
+Text: #607384
+
+The green hover border provides feedback without making the entire
+interface green.
+
+
+--------------------------------------------------
+8. APPLICATION STATUS
+--------------------------------------------------
+
+A small status panel appears below the modules.
+
+Background:
+#102A22
+
+Border:
+#245C43
+
+Content:
+"Application Status"
+
+Status:
+"Local API connection ready"
+
+A small green circle is displayed next to the connection status.
+
+Green circle:
+#35B86B
+
+The status panel should remain subtle and should not dominate the UI.
+
+
+--------------------------------------------------
+9. TYPOGRAPHY
+--------------------------------------------------
+
+General typography:
+- Use the default Avalonia/system font unless a project-wide font is
+  deliberately introduced.
+- Prefer SemiBold for headings.
+- Use normal weight for descriptions.
+- Avoid excessive bold text.
+
+Recommended sizes:
+- Main title: 30
+- Section heading: 17
+- Module title: 18
+- Description: 13
+- Status text: 12
+- Footer: 11
+
+
+--------------------------------------------------
+10. SPACING
+--------------------------------------------------
+
+Main window margin:
+35px
+
+Header bottom spacing:
+Approximately 35px
+
+Module spacing:
+Approximately 15px
+
+Status panel top margin:
+Approximately 15px
+
+Footer top margin:
+Approximately 20px
+
+Spacing should be consistent throughout the application.
+
+
+--------------------------------------------------
+11. DESIGN PRINCIPLES
+--------------------------------------------------
+
+1. Keep the interface simple.
+2. Use dark navy as the dominant colour.
+3. Use blue for interface structure and active elements.
+4. Use green primarily for availability and successful status.
+5. Disabled functionality should be clearly visible but subdued.
+6. Avoid unnecessary visual effects.
+7. Keep text readable at normal desktop viewing distances.
+8. Keep controls large enough to click comfortably.
+9. Maintain consistent spacing and corner radii.
+10. New screens should follow the same colour palette and hierarchy.
+11. The UI should support the architecture rather than hide it.
+12. The three architectural pillars should remain consistent throughout
+    the application.
+
+
+--------------------------------------------------
+12. ARCHITECTURE / UI RELATIONSHIP
+--------------------------------------------------
+
+The Avalonia application is the frontend.
+
+The application communicates with a separate self-hosted ASP.NET Core
+Web API.
+
+Frontend:
+- Smart_X_UI
+- Avalonia UI
+- C#
+
+Backend:
+- Smart_X.Api
+- ASP.NET Core Web API
+- C#
+
+The frontend should communicate with the API over HTTP rather than
+directly referencing backend processing classes.
+
+Business logic, processing, database operations, and API functionality
+should remain separated from the user interface.
+
+
+--------------------------------------------------
+13. CURRENT STARTUP INTERFACE
+--------------------------------------------------
+
+The startup screen provides access to three architectural pillars:
+
+1. Sensor Data Ingestion and Telemetry
+   - Enabled
+   - Implemented in Part 1
+
+2. Real-Time Command Stream and History
+   - Disabled
+   - Planned for Part 2
+
+3. Network Topology and Mesh Routing
+   - Disabled
+   - Planned for the final PoE
+
+Only the functionality required for the current assignment stage should
+be enabled.
+
+
+--------------------------------------------------
+14. DESIGN DIRECTION FOR FUTURE SCREENS
+--------------------------------------------------
+
+Future screens should reuse:
+
+Background:
+#0B1624
+
+Panels:
+#13263A
+
+Borders:
+#24445A
+
+Blue accent:
+#55B5D9
+
+Green accent:
+#35B86B
+
+Primary text:
+#E8F0F5
+
+Secondary text:
+#91A5B5
+
+Disabled text:
+#607384
+
+Future pages should look like they belong to the same application.
+
+Examples of future screens:
+- Sensor data dashboard
+- Sensor/device list
+- Telemetry details
+- Sensor history
+- API/system status
+- Command stream (Part 2)
+- Network topology (Final PoE)
+
+Do not introduce a completely different visual style on individual pages.
+
+
+--------------------------------------------------
+END OF DESIGN SPECIFICATION
+--------------------------------------------------

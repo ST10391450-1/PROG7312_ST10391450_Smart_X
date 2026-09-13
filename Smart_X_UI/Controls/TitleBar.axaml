@@ -1,0 +1,97 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Smart_X_UI.Controls.TitleBar"
+    Height="38">
+    <UserControl.Styles>
+        <Style Selector="Button.titleButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#AFC0CC"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.titleButton:pointerover">
+            <Setter Property="Background" Value="#18364A"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+        <Style Selector="Button.titleButton:pressed">
+            <Setter Property="Background" Value="#21506A"/>
+        </Style>
+        <Style Selector="Button.closeButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#AFC0CC"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.closeButton:pointerover">
+            <Setter Property="Background" Value="#8F3038"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+        <Style Selector="Button.closeButton:pressed">
+            <Setter Property="Background" Value="#B83B45"/>
+        </Style>
+    </UserControl.Styles>
+    <Border
+        Background="#0B1824"
+        BorderBrush="#183044"
+        BorderThickness="0,0,0,1">
+        <Grid ColumnDefinitions="*,Auto">
+            <Border
+                Grid.Column="0"
+                Background="Transparent"
+                PointerPressed="TitleArea_PointerPressed">
+                <StackPanel
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    Margin="14,0,0,0"
+                    Spacing="9">
+                    <Border
+                        Width="7"
+                        Height="7"
+                        CornerRadius="4"
+                        Background="#35C978"
+                        VerticalAlignment="Center"/>
+
+                    <TextBlock
+                        Text="Smart X"
+                        Foreground="#E8F0F5"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        VerticalAlignment="Center"/>
+
+                    <TextBlock
+                        Text="SYSTEM CONTROL"
+                        Foreground="#557080"
+                        FontSize="9"
+                        FontWeight="SemiBold"
+                        VerticalAlignment="Center"
+                        Margin="3,1,0,0"/>
+                </StackPanel>
+            </Border>
+            <StackPanel
+                Grid.Column="1"
+                Orientation="Horizontal"
+                VerticalAlignment="Stretch">
+                <Button
+                    Classes="titleButton"
+                    Width="44"
+                    Height="38"
+                    Content="−"
+                    Click="MinimizeButton_Click"/>
+
+                <Button
+                    Classes="closeButton"
+                    Width="44"
+                    Height="38"
+                    Content="×"
+                    Click="CloseButton_Click"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>
