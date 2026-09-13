@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Smart_X_API/Smart_X_API.csproj" Id="9aca65f6-39d0-492a-93bf-e6fd4fd3e3dd" />
+  <Project Path="Smart_X_UI/Smart_X_UI.csproj" />
+</Solution>
