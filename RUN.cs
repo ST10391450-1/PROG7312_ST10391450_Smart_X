@@ -1,14 +1,11 @@
 using System.Diagnostics;
+using System.Net.Http;
+
 class Program
 {
-    static int Run(
-        string fileName,
-        string arguments,
-        string workingDirectory,
-        bool waitForExit = true)
+    static int Run(string fileName, string arguments, string workingDirectory, bool waitForExit = true)
     {
         using var process = new Process();
-
         process.StartInfo = new ProcessStartInfo
         {
             FileName = fileName,
@@ -20,17 +17,8 @@ class Program
             CreateNoWindow = false
         };
 
-        process.OutputDataReceived += (_, e) =>
-        {
-            if (!string.IsNullOrEmpty(e.Data))
-                Console.WriteLine(e.Data);
-        };
-
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (!string.IsNullOrEmpty(e.Data))
-                Console.Error.WriteLine(e.Data);
-        };
+        process.OutputDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Console.WriteLine(e.Data); };
+        process.ErrorDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) Console.Error.WriteLine(e.Data); };
 
         process.Start();
         process.BeginOutputReadLine();
@@ -40,14 +28,59 @@ class Program
             return 0;
 
         process.WaitForExit();
-
         return process.ExitCode;
     }
+    static void StopExistingApi()
+    {
+        foreach (var process in Process.GetProcessesByName("Smart_X_API"))
+        {
+            try
+            {
+                Console.WriteLine($"Stopping existing Smart_X_API process ({process.Id})...");
+                process.Kill();
+                process.WaitForExit();
+            }
+            catch
+            {
+                Console.WriteLine($"Could not stop Smart_X_API process ({process.Id}).");
+            }
+            finally
+            {
+                process.Dispose();
+            }
+        }
+    }
 
-    static void Main()
+    static async Task<bool> WaitForApiAsync()
+    {
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        const string url = "http://localhost:8080";
+
+        Console.WriteLine("Waiting for API to become ready...");
+
+        for (int attempt = 1; attempt <= 30; attempt++)
+        {
+            try
+            {
+                using var response = await client.GetAsync(url);
+                Console.WriteLine("API is ready.");
+                return true;
+            }
+            catch
+            {
+                Console.WriteLine($"Waiting for API... ({attempt}/30)");
+                await Task.Delay(1000);
+            }
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("ERROR: API did not become ready.");
+        return false;
+    }
+
+    static async Task Main()
     {
         string root = Directory.GetCurrentDirectory();
-
         string api = Path.Combine(root, "Smart_X_API");
         string ui = Path.Combine(root, "Smart_X_UI");
         string simulator = Path.Combine(root, "Smart_X_Simulator.py");
@@ -71,16 +104,15 @@ class Program
             return;
         }
 
+        StopExistingApi();
+
+        Console.WriteLine();
         Console.WriteLine("================================");
         Console.WriteLine("Building API");
         Console.WriteLine("================================");
+        Console.WriteLine();
 
-        int apiBuildResult = Run(
-            "dotnet",
-            "build Smart_X_API.csproj",
-            api);
-
-        if (apiBuildResult != 0)
+        if (Run("dotnet", "build Smart_X_API.csproj", api) != 0)
         {
             Console.WriteLine();
             Console.WriteLine("API build failed.");
@@ -89,18 +121,13 @@ class Program
 
         Console.WriteLine();
         Console.WriteLine("API build completed successfully.");
-
         Console.WriteLine();
         Console.WriteLine("================================");
         Console.WriteLine("Building UI");
         Console.WriteLine("================================");
+        Console.WriteLine();
 
-        int uiBuildResult = Run(
-            "dotnet",
-            "build Smart_X_UI.csproj",
-            ui);
-
-        if (uiBuildResult != 0)
+        if (Run("dotnet", "build Smart_X_UI.csproj", ui) != 0)
         {
             Console.WriteLine();
             Console.WriteLine("UI build failed.");
@@ -109,12 +136,14 @@ class Program
 
         Console.WriteLine();
         Console.WriteLine("UI build completed successfully.");
-
         Console.WriteLine();
         Console.WriteLine("================================");
         Console.WriteLine("Python Simulator");
         Console.WriteLine("================================");
+        Console.WriteLine();
 
+        // We don't auto-start this one - it's easier to launch it manually once you can
+        // actually see the dashboard and watch data come in.
         if (File.Exists(simulator))
         {
             Console.WriteLine("Smart_X_Simulator.py found.");
@@ -134,12 +163,7 @@ class Program
         Console.WriteLine("Waiting for Docker build to fully complete...");
         Console.WriteLine();
 
-        int dockerBuildResult = Run(
-            "docker",
-            "build -t smart-x-api:latest .",
-            api);
-
-        if (dockerBuildResult != 0)
+        if (Run("docker", "build -t smart-x-api:latest .", api) != 0)
         {
             Console.WriteLine();
             Console.WriteLine("Docker image build failed.");
@@ -148,16 +172,13 @@ class Program
 
         Console.WriteLine();
         Console.WriteLine("Docker image build completed successfully.");
-
         Console.WriteLine();
         Console.WriteLine("================================");
         Console.WriteLine("Removing Existing Container");
         Console.WriteLine("================================");
+        Console.WriteLine();
 
-        Run(
-            "docker",
-            "rm -f smart-x-api",
-            api);
+        Run("docker", "rm -f smart-x-api", api);
 
         Console.WriteLine();
         Console.WriteLine("================================");
@@ -167,12 +188,7 @@ class Program
         Console.WriteLine("Starting smart-x-api...");
         Console.WriteLine();
 
-        int dockerRunResult = Run(
-            "docker",
-            "run -d --name smart-x-api -p 8080:8080 smart-x-api:latest",
-            api);
-
-        if (dockerRunResult != 0)
+        if (Run("docker", "run -d --name smart-x-api -p 8080:8080 smart-x-api:latest", api) != 0)
         {
             Console.WriteLine();
             Console.WriteLine("Docker container failed to start.");
@@ -180,8 +196,16 @@ class Program
         }
 
         Console.WriteLine();
-        Console.WriteLine("Docker container started successfully.");
+        Console.WriteLine("Docker container started.");
         Console.WriteLine("API: http://localhost:8080");
+        Console.WriteLine();
+
+        if (!await WaitForApiAsync())
+        {
+            Console.WriteLine();
+            Console.WriteLine("The UI will not be started because the API is unavailable.");
+            return;
+        }
 
         Console.WriteLine();
         Console.WriteLine("================================");
@@ -191,11 +215,7 @@ class Program
         Console.WriteLine("Starting Smart_X UI...");
         Console.WriteLine();
 
-        Run(
-            "dotnet",
-            "run --no-build",
-            ui,
-            false);
+        Run("dotnet", "run --no-build", ui, false);
 
         if (File.Exists(simulator))
         {
@@ -208,7 +228,7 @@ class Program
             Console.WriteLine("Press any other key to skip.");
             Console.WriteLine();
 
-            ConsoleKeyInfo key = Console.ReadKey(true);
+            var key = Console.ReadKey(true);
 
             if (key.Key == ConsoleKey.Enter)
             {
@@ -216,17 +236,12 @@ class Program
                 Console.WriteLine("Starting Python simulator...");
                 Console.WriteLine();
 
-                int simulatorResult = Run(
-                    "python",
-                    "\"Smart_X_Simulator.py\"",
-                    root);
-
+                int simulatorResult = Run("python", "\"Smart_X_Simulator.py\"", root);
                 Console.WriteLine();
 
-                if (simulatorResult != 0)
-                    Console.WriteLine($"Python simulator exited with code {simulatorResult}.");
-                else
-                    Console.WriteLine("Python simulator finished.");
+                Console.WriteLine(simulatorResult != 0
+                    ? $"Python simulator exited with code {simulatorResult}."
+                    : "Python simulator finished.");
             }
             else
             {

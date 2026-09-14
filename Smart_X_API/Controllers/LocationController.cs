@@ -11,55 +11,41 @@ public class LocationsController : ControllerBase
     private readonly LocationService _locationService;
     private readonly LocationValidationService _validationService;
 
-    public LocationsController(
-        LocationService locationService,
-        LocationValidationService validationService)
+    public LocationsController(LocationService locationService, LocationValidationService validationService)
     {
         _locationService = locationService;
         _validationService = validationService;
     }
 
-    // Returns all deployment locations.
     [HttpGet]
-    public IActionResult GetLocations()
-    {
-        return Ok(_locationService.GetLocations());
-    }
+    public IActionResult GetLocations() => Ok(_locationService.GetLocations());
 
-    // Adds a new deployment location after validating it.
     [HttpPost]
-    public IActionResult AddLocation(
-        [FromBody] DeploymentLocation location)
+    public IActionResult AddLocation([FromBody] DeploymentLocation location)
     {
         if (location == null)
-            return BadRequest("A deployment location is required.");
+            return BadRequest("Location can't be null.");
 
         if (!_validationService.Validate(location))
-            return BadRequest("The deployment location tree is invalid.");
+            return BadRequest("That location tree doesn't look right - check the building/floor/room nesting.");
 
         if (_locationService.LocationExists(location))
-            return Conflict("The deployment location already exists.");
+            return Conflict("That location's already registered.");
 
         if (!_locationService.AddLocation(location))
-            return BadRequest("The deployment location could not be added.");
+            return BadRequest("Couldn't add the location.");
 
         return Created("api/Locations", location);
     }
 
-    // Checks whether a deployment location is valid.
+    // Same validation the POST endpoint runs, but without actually saving anything -
+
     [HttpPost("validate")]
-    public IActionResult ValidateLocation(
-        [FromBody] DeploymentLocation location)
+    public IActionResult ValidateLocation([FromBody] DeploymentLocation location)
     {
         if (location == null)
-            return BadRequest("A deployment location is required.");
+            return BadRequest("Location can't be null.");
 
-        var isValid = _validationService.Validate(location);
-
-        return Ok(new
-        {
-            Valid = isValid
-        });
+        return Ok(new { Valid = _validationService.Validate(location) });
     }
 }
-

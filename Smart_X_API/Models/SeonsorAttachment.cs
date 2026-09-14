@@ -1,6 +1,4 @@
-﻿// File attachement per sensor model
-
-namespace Smart_X_API.Models;
+﻿namespace Smart_X_API.Models;
 
 public class SensorAttachment
 {
