@@ -6,10 +6,12 @@ public class LocationValidationService
 {
     public bool Validate(DeploymentLocation? location)
     {
-        return location != null && ValidateRecursive(location);
+        return location != null &&
+               ValidateRecursive(location);
     }
 
-    private bool ValidateRecursive(DeploymentLocation location)
+    private bool ValidateRecursive(
+        DeploymentLocation location)
     {
         if (string.IsNullOrWhiteSpace(location.Name))
         {
@@ -21,11 +23,14 @@ public class LocationValidationService
             return false;
         }
 
-        if (!location.IsConfigured)
+        foreach (var child in location.Children)
         {
-            return false;
+            if (!ValidateRecursive(child))
+            {
+                return false;
+            }
         }
 
-        return location.Children.All(ValidateRecursive);
+        return true;
     }
 }

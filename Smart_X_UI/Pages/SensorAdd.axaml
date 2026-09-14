@@ -1,0 +1,276 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Smart_X_UI.Pages.SensorAdd">
+
+    <UserControl.Styles>
+
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#101F2D"/>
+            <Setter Property="Foreground" Value="#E8F1F8"/>
+            <Setter Property="BorderBrush" Value="#29445A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="7"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="MinHeight" Value="42"/>
+        </Style>
+
+        <Style Selector="TextBox:focus">
+            <Setter Property="BorderBrush" Value="#2D8CFF"/>
+        </Style>
+
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#101F2D"/>
+            <Setter Property="Foreground" Value="#E8F1F8"/>
+            <Setter Property="BorderBrush" Value="#29445A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="7"/>
+            <Setter Property="MinHeight" Value="42"/>
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="Background" Value="#1B3042"/>
+            <Setter Property="Foreground" Value="#D8E6F3"/>
+            <Setter Property="BorderBrush" Value="#29445A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="7"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style Selector="Button:pointerover">
+            <Setter Property="Background" Value="#243F55"/>
+        </Style>
+
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#2D8CFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#2D8CFF"/>
+        </Style>
+
+        <Style Selector="Button.primary:pointerover">
+            <Setter Property="Background" Value="#4A9EFF"/>
+        </Style>
+
+        <Style Selector="Button.back">
+            <Setter Property="Background" Value="#162636"/>
+            <Setter Property="Foreground" Value="#9EB5C8"/>
+            <Setter Property="BorderBrush" Value="#29445A"/>
+        </Style>
+
+        <Style Selector="Border.form-card">
+            <Setter Property="Background" Value="#162636"/>
+            <Setter Property="BorderBrush" Value="#233B50"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+        </Style>
+
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="#B7C9D8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Grid Background="#0B1722"
+          RowDefinitions="Auto,*">
+
+        <!-- Header -->
+        <Border Grid.Row="0"
+                Background="#101F2D"
+                BorderBrush="#233B50"
+                BorderThickness="0,0,0,1"
+                Padding="28,22">
+
+            <Grid ColumnDefinitions="*,Auto">
+
+                <StackPanel Spacing="4">
+
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="10">
+
+                        <Border Background="#1D4F7A"
+                                CornerRadius="6"
+                                Padding="8,5">
+
+                            <TextBlock Text="+"
+                                       FontSize="18"
+                                       FontWeight="Bold"
+                                       Foreground="#8FC5FF"/>
+                        </Border>
+
+                        <TextBlock Text="ADD SENSOR"
+                                   VerticalAlignment="Center"
+                                   FontSize="24"
+                                   FontWeight="Bold"
+                                   Foreground="#F1F7FC"/>
+                    </StackPanel>
+
+                    <TextBlock Text="Register a new sensor with Smart X."
+                               Foreground="#8199AC"
+                               FontSize="13"
+                               Margin="38,0,0,0"/>
+
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Content="←  Back"
+                        Classes="back"
+                        Click="BackButton_Click"
+                        VerticalAlignment="Center"/>
+
+            </Grid>
+
+        </Border>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Padding="28">
+
+            <Border MaxWidth="760"
+                    HorizontalAlignment="Center"
+                    Classes="form-card"
+                    Padding="30"
+                    Margin="0,8,0,30">
+
+                <StackPanel Spacing="24">
+
+                    <!-- Section heading -->
+                    <StackPanel Spacing="4">
+
+                        <TextBlock Text="SENSOR DETAILS"
+                                   FontSize="17"
+                                   FontWeight="Bold"
+                                   Foreground="#F1F7FC"/>
+
+                        <TextBlock Text="Enter the information required to register this device."
+                                   FontSize="13"
+                                   Foreground="#8199AC"/>
+
+                    </StackPanel>
+
+                    <!-- MAC Address -->
+                    <StackPanel Spacing="8">
+
+                        <TextBlock Text="MAC ADDRESS"
+                                   Classes="label"/>
+
+                        <TextBox x:Name="MacAddressTextBox"
+                                 PlaceholderText="AA:BB:CC:DD:EE:FF"
+                                 TextChanged="MacAddressTextBox_TextChanged"/>
+
+                        <TextBlock x:Name="MacAddressErrorText"
+                                   Text="Invalid MAC address."
+                                   Foreground="#FF6B6B"
+                                   FontSize="12"
+                                   IsVisible="False"/>
+
+                    </StackPanel>
+
+                    <!-- Node ID -->
+                    <StackPanel Spacing="8">
+
+                        <TextBlock Text="NODE ID"
+                                   Classes="label"/>
+
+                        <TextBox x:Name="NodeIdTextBox"
+                                 PlaceholderText="Enter a unique node ID"
+                                 TextChanged="NodeIdTextBox_TextChanged"/>
+
+                        <TextBlock x:Name="NodeIdErrorText"
+                                   Text="Node ID is required."
+                                   Foreground="#FF6B6B"
+                                   FontSize="12"
+                                   IsVisible="False"/>
+
+                    </StackPanel>
+
+                    <!-- Category -->
+                    <StackPanel Spacing="8">
+
+                        <TextBlock Text="CATEGORY"
+                                   Classes="label"/>
+
+                        <ComboBox x:Name="CategoryComboBox"
+                                  PlaceholderText="Select sensor category">
+
+                            <ComboBoxItem Content="Environmental"/>
+                            <ComboBoxItem Content="Power Consumption"/>
+                            <ComboBoxItem Content="Actuator"/>
+
+                        </ComboBox>
+
+                        <TextBlock x:Name="CategoryErrorText"
+                                   Text="Select a sensor category."
+                                   Foreground="#FF6B6B"
+                                   FontSize="12"
+                                   IsVisible="False"/>
+
+                    </StackPanel>
+
+                    <!-- Location -->
+                    <StackPanel Spacing="8">
+
+                        <TextBlock Text="DEPLOYMENT LOCATION"
+                                   Classes="label"/>
+
+                        <ComboBox x:Name="LocationComboBox"
+                                  PlaceholderText="Select deployment location"/>
+
+                        <TextBlock x:Name="LocationErrorText"
+                                   Text="Select a deployment location."
+                                   Foreground="#FF6B6B"
+                                   FontSize="12"
+                                   IsVisible="False"/>
+
+                    </StackPanel>
+
+                    <!-- Status -->
+                    <Border Background="#101F2D"
+                            BorderBrush="#233B50"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="14"
+                            IsVisible="{Binding #RegistrationStatusText.IsVisible}">
+
+                        <TextBlock x:Name="RegistrationStatusText"
+                                   Text=""
+                                   TextWrapping="Wrap"
+                                   Foreground="#BFD1DF"
+                                   FontSize="13"/>
+
+                    </Border>
+
+                    <!-- Divider -->
+                    <Border Height="1"
+                            Background="#233B50"
+                            Margin="0,2"/>
+
+                    <!-- Actions -->
+                    <Grid ColumnDefinitions="Auto,*"
+                          ColumnSpacing="12">
+
+                        <Button Content="Clear"
+                                Click="ClearButton_Click"
+                                MinWidth="100"/>
+
+                        <Button Grid.Column="1"
+                                x:Name="RegisterSensorButton"
+                                Content="Register Sensor  →"
+                                Classes="primary"
+                                HorizontalAlignment="Stretch"
+                                Click="RegisterSensorButton_Click"/>
+
+                    </Grid>
+
+                </StackPanel>
+
+            </Border>
+
+        </ScrollViewer>
+
+    </Grid>
+
+</UserControl>

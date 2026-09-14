@@ -23,7 +23,7 @@ public class SensorsController : ControllerBase
 
     private const long MaxAttachmentSizeBytes = 50 * 1024 * 1024;
 
-    private static readonly List<SensorRegistration> Sensors = new();
+    public static readonly List<SensorRegistration>Sensors = new();
     private static readonly List<SensorAttachment> Attachments = new();
 
     private readonly IWebHostEnvironment _environment;

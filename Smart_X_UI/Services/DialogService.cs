@@ -1,16 +1,19 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Media;
 using System;
 using System.Threading.Tasks;
 
-namespace Smart_X_UI.Pages;
+namespace Smart_X_UI.Services;
 
-public partial class SensorPayloadManagement
+public class DialogService
 {
-    private async Task ShowMessage(string message)
+    public async Task ShowMessageAsync(
+        TopLevel? topLevel,
+        string message)
     {
-        if (TopLevel.GetTopLevel(this) is not Window owner)
+        if (topLevel is not Window owner)
         {
             Console.WriteLine(message);
             return;
@@ -19,7 +22,7 @@ public partial class SensorPayloadManagement
         var textBlock = new TextBlock
         {
             Text = message,
-            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 20)
         };
 
@@ -27,8 +30,7 @@ public partial class SensorPayloadManagement
         {
             Content = "OK",
             Width = 90,
-            HorizontalAlignment =
-                HorizontalAlignment.Right
+            HorizontalAlignment = HorizontalAlignment.Right
         };
 
         var panel = new StackPanel
@@ -46,8 +48,7 @@ public partial class SensorPayloadManagement
             Width = 420,
             MinHeight = 170,
             SizeToContent = SizeToContent.Height,
-            WindowStartupLocation =
-                WindowStartupLocation.CenterOwner,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Content = panel
         };
 

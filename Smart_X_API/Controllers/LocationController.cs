@@ -8,39 +8,73 @@ namespace Smart_X_API.Controllers;
 [Route("api/[controller]")]
 public class LocationsController : ControllerBase
 {
-    private static readonly List<DeploymentLocation> Locations = new();
-
+    private readonly LocationService _locationService;
     private readonly LocationValidationService _validationService;
 
-    public LocationsController(LocationValidationService validationService)
+    public LocationsController(
+        LocationService locationService,
+        LocationValidationService validationService)
     {
+        _locationService = locationService;
         _validationService = validationService;
     }
 
     [HttpGet]
     public IActionResult GetLocations()
     {
-        return Ok(Locations);
+        return Ok(
+            _locationService.GetLocations());
     }
 
     [HttpPost]
-    public IActionResult AddLocation([FromBody] DeploymentLocation location)
+    public IActionResult AddLocation(
+        [FromBody] DeploymentLocation location)
     {
-        if (!_validationService.Validate(location))
+        if (location == null)
         {
-            return BadRequest("The deployment location tree is invalid.");
+            return BadRequest(
+                "A deployment location is required.");
         }
 
-        Locations.Add(location);
+        if (!_validationService.Validate(location))
+        {
+            return BadRequest(
+                "The deployment location tree is invalid.");
+        }
 
-        return Created("api/Locations", location);
+        if (_locationService.LocationExists(location))
+        {
+            return Conflict(
+                "The deployment location already exists.");
+        }
+
+        if (!_locationService.AddLocation(location))
+        {
+            return BadRequest(
+                "The deployment location could not be added.");
+        }
+
+        return Created(
+            "api/Locations",
+            location);
     }
 
     [HttpPost("validate")]
-    public IActionResult ValidateLocation([FromBody] DeploymentLocation location)
+    public IActionResult ValidateLocation(
+        [FromBody] DeploymentLocation location)
     {
-        bool valid = _validationService.Validate(location);
+        if (location == null)
+        {
+            return BadRequest(
+                "A deployment location is required.");
+        }
 
-        return Ok(new { Valid = valid });
+        bool valid =
+            _validationService.Validate(location);
+
+        return Ok(new
+        {
+            Valid = valid
+        });
     }
 }

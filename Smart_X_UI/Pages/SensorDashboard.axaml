@@ -1,0 +1,952 @@
+﻿<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:Smart_X_UI.Models"
+    x:Class="Smart_X_UI.Pages.SensorDashboard">
+
+    <UserControl.Styles>
+
+        <!-- Buttons -->
+
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#2D8CFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="MinHeight" Value="38"/>
+        </Style>
+
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="#1D3042"/>
+            <Setter Property="Foreground" Value="#D8E6F3"/>
+            <Setter Property="Padding" Value="13,8"/>
+            <Setter Property="MinHeight" Value="38"/>
+        </Style>
+
+        <Style Selector="Button.details">
+            <Setter Property="Background" Value="#1D3042"/>
+            <Setter Property="Foreground" Value="#8FC5FF"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="MinHeight" Value="34"/>
+        </Style>
+
+        <Style Selector="Button.back">
+            <Setter Property="Background" Value="#13283A"/>
+            <Setter Property="Foreground" Value="#B9CAD6"/>
+            <Setter Property="BorderBrush" Value="#29465D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="13,8"/>
+            <Setter Property="MinHeight" Value="38"/>
+        </Style>
+
+        <Style Selector="Button.back:pointerover">
+            <Setter Property="Background" Value="#1B374D"/>
+            <Setter Property="BorderBrush" Value="#4A7190"/>
+        </Style>
+
+        <!-- Statistic cards -->
+
+        <Style Selector="Border.stat-card">
+            <Setter Property="Background" Value="#162636"/>
+            <Setter Property="BorderBrush" Value="#233B50"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="15"/>
+        </Style>
+
+        <!-- Sensor cards -->
+
+        <Style Selector="Border.sensor-card">
+            <Setter Property="Background" Value="#162636"/>
+            <Setter Property="BorderBrush" Value="#233B50"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="15"/>
+        </Style>
+
+    </UserControl.Styles>
+
+
+    <Grid
+        RowDefinitions="Auto,*"
+        Background="#0B1722">
+
+        <!-- ========================================================= -->
+        <!-- HEADER -->
+        <!-- ========================================================= -->
+
+        <Border
+            Grid.Row="0"
+            Background="#101F2D"
+            BorderBrush="#233B50"
+            BorderThickness="0,0,0,1"
+            Padding="20,16">
+
+            <StackPanel Spacing="14">
+
+                <!-- Top row -->
+
+                <Grid
+                    ColumnDefinitions="Auto,*"
+                    ColumnSpacing="14">
+
+                    <!-- Back -->
+
+                    <Button
+                        Grid.Column="0"
+                        Content="←  Main Window"
+                        Classes="back"
+                        Click="BackButton_Click"
+                        VerticalAlignment="Center"/>
+
+                    <!-- Title -->
+
+                    <StackPanel
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Spacing="3">
+
+                        <TextBlock
+                            Text="SENSOR DASHBOARD"
+                            FontSize="21"
+                            FontWeight="Bold"
+                            Foreground="#F1F6FA"
+                            TextTrimming="CharacterEllipsis"/>
+
+                        <StackPanel
+                            Orientation="Horizontal"
+                            Spacing="7">
+
+                            <Ellipse
+                                Width="7"
+                                Height="7"
+                                VerticalAlignment="Center"
+                                Fill="#39D98A"/>
+
+                            <TextBlock
+                                x:Name="ConnectionStatusText"
+                                Text="CONNECTING..."
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="#8FA8BC"/>
+
+                        </StackPanel>
+
+                    </StackPanel>
+
+                </Grid>
+
+
+                <!-- Status -->
+
+                <TextBlock
+                    x:Name="StatusText"
+                    Text="Loading sensors..."
+                    FontSize="11"
+                    Foreground="#6F879A"
+                    TextTrimming="CharacterEllipsis"/>
+
+
+                <!-- Actions -->
+
+                <WrapPanel
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Left">
+
+                    <Button
+                        Content="↻  Refresh"
+                        Classes="secondary"
+                        Click="RefreshButton_Click"
+                        Margin="0,0,7,7"/>
+
+                    <Button
+                        Content="+  Add Location"
+                        Classes="secondary"
+                        Click="AddLocationButton_Click"
+                        Margin="0,0,7,7"/>
+
+                    <Button
+                        Content="+  Add Sensor"
+                        Classes="primary"
+                        Click="AddSensorButton_Click"
+                        Margin="0,0,0,7"/>
+
+                </WrapPanel>
+
+            </StackPanel>
+
+        </Border>
+
+
+        <!-- ========================================================= -->
+        <!-- CONTENT -->
+        <!-- ========================================================= -->
+
+        <ScrollViewer
+            Grid.Row="1"
+            Padding="20"
+            VerticalScrollBarVisibility="Auto"
+            HorizontalScrollBarVisibility="Disabled">
+
+            <StackPanel Spacing="20">
+
+                <!-- ================================================= -->
+                <!-- STATISTICS -->
+                <!-- ================================================= -->
+
+                <Grid
+                    ColumnDefinitions="*,*,*"
+                    ColumnSpacing="10">
+
+                    <!-- Registered -->
+
+                    <Border Classes="stat-card">
+
+                        <StackPanel Spacing="8">
+
+                            <Border
+                                Width="40"
+                                Height="40"
+                                CornerRadius="9"
+                                Background="#1C3850"
+                                HorizontalAlignment="Left">
+
+                                <TextBlock
+                                    Text="◈"
+                                    FontSize="20"
+                                    Foreground="#65B5FF"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"/>
+
+                            </Border>
+
+                            <TextBlock
+                                Text="REGISTERED"
+                                FontSize="9"
+                                FontWeight="SemiBold"
+                                Foreground="#71899D"/>
+
+                            <TextBlock
+                                x:Name="RegisteredSensorsText"
+                                Text="0"
+                                FontSize="23"
+                                FontWeight="Bold"
+                                Foreground="#F1F6FA"/>
+
+                            <TextBlock
+                                Text="Total sensors"
+                                FontSize="9"
+                                Foreground="#60788B"/>
+
+                        </StackPanel>
+
+                    </Border>
+
+
+                    <!-- Active -->
+
+                    <Border
+                        Grid.Column="1"
+                        Classes="stat-card">
+
+                        <StackPanel Spacing="8">
+
+                            <Border
+                                Width="40"
+                                Height="40"
+                                CornerRadius="9"
+                                Background="#173B31"
+                                HorizontalAlignment="Left">
+
+                                <TextBlock
+                                    Text="●"
+                                    FontSize="17"
+                                    Foreground="#39D98A"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"/>
+
+                            </Border>
+
+                            <TextBlock
+                                Text="ACTIVE"
+                                FontSize="9"
+                                FontWeight="SemiBold"
+                                Foreground="#71899D"/>
+
+                            <TextBlock
+                                x:Name="ActiveSensorsText"
+                                Text="0 ACTIVE"
+                                FontSize="19"
+                                FontWeight="Bold"
+                                Foreground="#F1F6FA"
+                                TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock
+                                Text="Currently online"
+                                FontSize="9"
+                                Foreground="#60788B"
+                                TextTrimming="CharacterEllipsis"/>
+
+                        </StackPanel>
+
+                    </Border>
+
+
+                    <!-- Issues -->
+
+                    <Border
+                        Grid.Column="2"
+                        Classes="stat-card">
+
+                        <StackPanel Spacing="8">
+
+                            <Border
+                                Width="40"
+                                Height="40"
+                                CornerRadius="9"
+                                Background="#3B2920"
+                                HorizontalAlignment="Left">
+
+                                <TextBlock
+                                    Text="!"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Foreground="#FFB15C"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"/>
+
+                            </Border>
+
+                            <TextBlock
+                                Text="ISSUES"
+                                FontSize="9"
+                                FontWeight="SemiBold"
+                                Foreground="#71899D"/>
+
+                            <TextBlock
+                                x:Name="IssuesText"
+                                Text="0"
+                                FontSize="23"
+                                FontWeight="Bold"
+                                Foreground="#F1F6FA"/>
+
+                            <TextBlock
+                                Text="Requires attention"
+                                FontSize="9"
+                                Foreground="#60788B"
+                                TextTrimming="CharacterEllipsis"/>
+
+                        </StackPanel>
+
+                    </Border>
+
+                </Grid>
+
+
+                <!-- ================================================= -->
+                <!-- SENSOR SECTION HEADER -->
+                <!-- ================================================= -->
+
+                <Grid
+                    ColumnDefinitions="*,Auto"
+                    Margin="0,2,0,0">
+
+                    <StackPanel
+                        Grid.Column="0"
+                        Spacing="3">
+
+                        <TextBlock
+                            Text="REGISTERED SENSORS"
+                            FontSize="17"
+                            FontWeight="Bold"
+                            Foreground="#F1F6FA"/>
+
+                        <TextBlock
+                            Text="Monitor connected Smart X devices"
+                            FontSize="11"
+                            Foreground="#6F879A"/>
+
+                    </StackPanel>
+
+                    <Border
+                        Grid.Column="1"
+                        Background="#162636"
+                        BorderBrush="#233B50"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="9,5"
+                        VerticalAlignment="Center">
+
+                        <StackPanel
+                            Orientation="Horizontal"
+                            Spacing="6">
+
+                            <Ellipse
+                                Width="6"
+                                Height="6"
+                                Fill="#39D98A"
+                                VerticalAlignment="Center"/>
+
+                            <TextBlock
+                                Text="LIVE"
+                                FontSize="9"
+                                FontWeight="Bold"
+                                Foreground="#39D98A"/>
+
+                        </StackPanel>
+
+                    </Border>
+
+                </Grid>
+
+
+                <!-- ================================================= -->
+                <!-- SENSOR OVERVIEW -->
+                <!-- ================================================= -->
+
+                <Border
+                    Background="#101F2D"
+                    BorderBrush="#233B50"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="18">
+
+                    <StackPanel Spacing="16">
+
+                        <!-- Overview header -->
+
+                        <Grid
+                            ColumnDefinitions="*,Auto">
+
+                            <StackPanel
+                                Grid.Column="0"
+                                Spacing="3">
+
+                                <TextBlock
+                                    Text="SENSOR OVERVIEW"
+                                    FontSize="17"
+                                    FontWeight="Bold"
+                                    Foreground="#F1F6FA"/>
+
+                                <TextBlock
+                                    Text="Live overview of your Smart X sensor network"
+                                    FontSize="11"
+                                    Foreground="#6F879A"/>
+
+                            </StackPanel>
+
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="6"
+                                VerticalAlignment="Center">
+
+                                <Ellipse
+                                    Width="7"
+                                    Height="7"
+                                    Fill="#39D98A"
+                                    VerticalAlignment="Center"/>
+
+                                <TextBlock
+                                    Text="LIVE DATA"
+                                    FontSize="9"
+                                    FontWeight="Bold"
+                                    Foreground="#39D98A"/>
+
+                            </StackPanel>
+
+                        </Grid>
+
+
+                        <!-- Main readings -->
+
+                        <Grid
+                            ColumnDefinitions="*,*,*"
+                            ColumnSpacing="10">
+
+                            <!-- Temperature -->
+
+                            <Border
+                                Background="#162636"
+                                BorderBrush="#233B50"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="14">
+
+                                <StackPanel Spacing="7">
+
+                                    <TextBlock
+                                        Text="TEMPERATURE"
+                                        FontSize="9"
+                                        FontWeight="SemiBold"
+                                        Foreground="#71899D"/>
+
+                                    <StackPanel
+                                        Orientation="Horizontal"
+                                        Spacing="6">
+
+                                        <TextBlock
+                                            x:Name="AverageTemperatureText"
+                                            Text="--"
+                                            FontSize="24"
+                                            FontWeight="Bold"
+                                            Foreground="#F1F6FA"/>
+
+                                        <TextBlock
+                                            Text="°C"
+                                            FontSize="12"
+                                            Foreground="#8FA8BC"
+                                            VerticalAlignment="Center"/>
+
+                                    </StackPanel>
+
+                                    <TextBlock
+                                        x:Name="TemperatureStatusText"
+                                        Text="No readings"
+                                        FontSize="9"
+                                        Foreground="#637C8F"/>
+
+                                </StackPanel>
+
+                            </Border>
+
+
+                            <!-- Power -->
+
+                            <Border
+                                Grid.Column="1"
+                                Background="#162636"
+                                BorderBrush="#233B50"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="14">
+
+                                <StackPanel Spacing="7">
+
+                                    <TextBlock
+                                        Text="POWER"
+                                        FontSize="9"
+                                        FontWeight="SemiBold"
+                                        Foreground="#71899D"/>
+
+                                    <StackPanel
+                                        Orientation="Horizontal"
+                                        Spacing="6">
+
+                                        <TextBlock
+                                            x:Name="TotalPowerText"
+                                            Text="--"
+                                            FontSize="24"
+                                            FontWeight="Bold"
+                                            Foreground="#F1F6FA"/>
+
+                                        <TextBlock
+                                            Text="W"
+                                            FontSize="12"
+                                            Foreground="#8FA8BC"
+                                            VerticalAlignment="Center"/>
+
+                                    </StackPanel>
+
+                                    <TextBlock
+                                        x:Name="PowerStatusText"
+                                        Text="No readings"
+                                        FontSize="9"
+                                        Foreground="#637C8F"/>
+
+                                </StackPanel>
+
+                            </Border>
+
+
+                            <!-- Network -->
+
+                            <Border
+                                Grid.Column="2"
+                                Background="#162636"
+                                BorderBrush="#233B50"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="14">
+
+                                <StackPanel Spacing="7">
+
+                                    <TextBlock
+                                        Text="NETWORK"
+                                        FontSize="9"
+                                        FontWeight="SemiBold"
+                                        Foreground="#71899D"/>
+
+                                    <StackPanel
+                                        Orientation="Horizontal"
+                                        Spacing="6">
+
+                                        <TextBlock
+                                            x:Name="NetworkActiveText"
+                                            Text="0"
+                                            FontSize="24"
+                                            FontWeight="Bold"
+                                            Foreground="#39D98A"/>
+
+                                        <TextBlock
+                                            Text="active"
+                                            FontSize="12"
+                                            Foreground="#8FA8BC"
+                                            VerticalAlignment="Center"/>
+
+                                    </StackPanel>
+
+                                    <TextBlock
+                                        x:Name="NetworkStatusText"
+                                        Text="Waiting for sensors"
+                                        FontSize="9"
+                                        Foreground="#637C8F"
+                                        TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                            </Border>
+
+                        </Grid>
+
+
+                        <!-- Sensor categories -->
+
+                        <Grid
+                            ColumnDefinitions="*,*,*"
+                            ColumnSpacing="10">
+
+                            <!-- Environmental -->
+
+                            <Border
+                                Background="#142A27"
+                                BorderBrush="#245047"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="13">
+
+                                <StackPanel Spacing="5">
+
+                                    <TextBlock
+                                        Text="ENVIRONMENTAL"
+                                        FontSize="9"
+                                        FontWeight="SemiBold"
+                                        Foreground="#6E9D92"/>
+
+                                    <TextBlock
+                                        x:Name="EnvironmentalSensorsText"
+                                        Text="0 sensors"
+                                        FontSize="14"
+                                        FontWeight="SemiBold"
+                                        Foreground="#D9F3ED"/>
+
+                                    <TextBlock
+                                        Text="Temperature / environment"
+                                        FontSize="9"
+                                        Foreground="#5F8179"
+                                        TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                            </Border>
+
+
+                            <!-- Power -->
+
+                            <Border
+                                Grid.Column="1"
+                                Background="#292516"
+                                BorderBrush="#504725"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="13">
+
+                                <StackPanel Spacing="5">
+
+                                    <TextBlock
+                                        Text="POWER"
+                                        FontSize="9"
+                                        FontWeight="SemiBold"
+                                        Foreground="#A99B62"/>
+
+                                    <TextBlock
+                                        x:Name="PowerSensorsText"
+                                        Text="0 sensors"
+                                        FontSize="14"
+                                        FontWeight="SemiBold"
+                                        Foreground="#F0E8C8"/>
+
+                                    <TextBlock
+                                        Text="Energy monitoring"
+                                        FontSize="9"
+                                        Foreground="#847B56"
+                                        TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                            </Border>
+
+
+                            <!-- Actuators -->
+
+                            <Border
+                                Grid.Column="2"
+                                Background="#241C2D"
+                                BorderBrush="#473457"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="13">
+
+                                <StackPanel Spacing="5">
+
+                                    <TextBlock
+                                        Text="ACTUATORS"
+                                        FontSize="9"
+                                        FontWeight="SemiBold"
+                                        Foreground="#9D7DB5"/>
+
+                                    <TextBlock
+                                        x:Name="ActuatorSensorsText"
+                                        Text="0 sensors"
+                                        FontSize="14"
+                                        FontWeight="SemiBold"
+                                        Foreground="#E9DCF0"/>
+
+                                    <TextBlock
+                                        Text="Control devices"
+                                        FontSize="9"
+                                        Foreground="#776183"
+                                        TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                            </Border>
+
+                        </Grid>
+
+
+                        <!-- Latest activity -->
+
+                        <Border
+                            Background="#162636"
+                            BorderBrush="#233B50"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="13">
+
+                            <Grid
+                                ColumnDefinitions="Auto,*,Auto"
+                                ColumnSpacing="12">
+
+                                <Border
+                                    Width="34"
+                                    Height="34"
+                                    CornerRadius="7"
+                                    Background="#1B3144">
+
+                                    <TextBlock
+                                        Text="⌁"
+                                        FontSize="18"
+                                        Foreground="#65B5FF"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"/>
+
+                                </Border>
+
+                                <StackPanel
+                                    Grid.Column="1"
+                                    Spacing="3"
+                                    VerticalAlignment="Center">
+
+                                    <TextBlock
+                                        Text="LATEST SENSOR ACTIVITY"
+                                        FontSize="9"
+                                        FontWeight="SemiBold"
+                                        Foreground="#637C8F"/>
+
+                                    <TextBlock
+                                        x:Name="LatestSensorActivityText"
+                                        Text="Waiting for sensor telemetry..."
+                                        FontSize="11"
+                                        Foreground="#B9CAD6"
+                                        TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                                <TextBlock
+                                    Grid.Column="2"
+                                    x:Name="LastUpdateText"
+                                    Text="--"
+                                    FontSize="9"
+                                    Foreground="#637C8F"
+                                    VerticalAlignment="Center"/>
+
+                            </Grid>
+
+                        </Border>
+
+                    </StackPanel>
+
+                </Border>
+
+
+                <!-- ================================================= -->
+                <!-- SENSOR LIST -->
+                <!-- ================================================= -->
+
+                <ItemsControl
+                    x:Name="SensorsItemsControl">
+
+                    <ItemsControl.ItemTemplate>
+
+                        <DataTemplate
+                            x:DataType="models:SensorRegistration">
+
+                            <Border
+                                Classes="sensor-card"
+                                Margin="0,0,0,10">
+
+                                <Grid
+                                    RowDefinitions="Auto,Auto"
+                                    ColumnDefinitions="*,Auto"
+                                    RowSpacing="13"
+                                    ColumnSpacing="10">
+
+                                    <!-- Device -->
+
+                                    <StackPanel
+                                        Grid.Row="0"
+                                        Grid.Column="0"
+                                        Orientation="Horizontal"
+                                        Spacing="10">
+
+                                        <Border
+                                            Width="40"
+                                            Height="40"
+                                            CornerRadius="8"
+                                            Background="#1B3144"
+                                            VerticalAlignment="Center">
+
+                                            <TextBlock
+                                                Text="⌁"
+                                                FontSize="20"
+                                                Foreground="#65B5FF"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"/>
+
+                                        </Border>
+
+                                        <StackPanel
+                                            VerticalAlignment="Center"
+                                            Spacing="2">
+
+                                            <TextBlock
+                                                Text="DEVICE"
+                                                FontSize="9"
+                                                FontWeight="SemiBold"
+                                                Foreground="#637C8F"/>
+
+                                            <TextBlock
+                                                Text="{Binding NodeId}"
+                                                FontSize="14"
+                                                FontWeight="SemiBold"
+                                                Foreground="#EDF4F8"
+                                                TextTrimming="CharacterEllipsis"/>
+
+                                        </StackPanel>
+
+                                    </StackPanel>
+
+
+                                    <!-- Status / Details -->
+
+                                    <StackPanel
+                                        Grid.Row="0"
+                                        Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        Spacing="7"
+                                        VerticalAlignment="Center">
+
+                                        <Ellipse
+                                            Width="7"
+                                            Height="7"
+                                            Fill="#39D98A"
+                                            VerticalAlignment="Center"/>
+
+                                        <TextBlock
+                                            Text="ACTIVE"
+                                            FontSize="10"
+                                            FontWeight="SemiBold"
+                                            Foreground="#39D98A"
+                                            VerticalAlignment="Center"/>
+
+                                        <Button
+                                            Content="Details  →"
+                                            Classes="details"
+                                            Tag="{Binding}"
+                                            Margin="5,0,0,0"
+                                            Click="SensorDetailsButton_Click"/>
+
+                                    </StackPanel>
+
+
+                                    <!-- Location -->
+
+                                    <StackPanel
+                                        Grid.Row="1"
+                                        Grid.Column="0"
+                                        Spacing="3">
+
+                                        <TextBlock
+                                            Text="LOCATION"
+                                            FontSize="9"
+                                            FontWeight="SemiBold"
+                                            Foreground="#637C8F"/>
+
+                                        <TextBlock
+                                            Text="{Binding Location}"
+                                            FontSize="12"
+                                            Foreground="#B9CAD6"
+                                            TextWrapping="Wrap"/>
+
+                                    </StackPanel>
+
+
+                                    <!-- Category -->
+
+                                    <StackPanel
+                                        Grid.Row="1"
+                                        Grid.Column="1"
+                                        Spacing="3">
+
+                                        <TextBlock
+                                            Text="CATEGORY"
+                                            FontSize="9"
+                                            FontWeight="SemiBold"
+                                            Foreground="#637C8F"/>
+
+                                        <TextBlock
+                                            Text="{Binding Category}"
+                                            FontSize="12"
+                                            Foreground="#B9CAD6"
+                                            TextWrapping="Wrap"/>
+
+                                    </StackPanel>
+
+                                </Grid>
+
+                            </Border>
+
+                        </DataTemplate>
+
+                    </ItemsControl.ItemTemplate>
+
+                </ItemsControl>
+
+            </StackPanel>
+
+        </ScrollViewer>
+
+    </Grid>
+
+</UserControl>

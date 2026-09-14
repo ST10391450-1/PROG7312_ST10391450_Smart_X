@@ -6,7 +6,6 @@
 
      <Application.Resources>
 
-        <x:String x:Key="ApiBaseUrl">https://localhost:8080</x:String>
 
     </Application.Resources>
 
