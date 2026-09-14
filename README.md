@@ -230,7 +230,7 @@ Docker must be running before starting the project.
 Run the launcher from the project root:
 
 ```bash
-dotnet run
+dotnet RUN.cs
 ```
 
 The launcher builds the projects, starts the API in Docker, starts the desktop application, and then asks whether the Python simulator should be started.
