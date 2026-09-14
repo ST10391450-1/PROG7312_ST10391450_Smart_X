@@ -1,8 +1,11 @@
 <UserControl
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:Smart_X_UI.Models"
     x:Class="Smart_X_UI.Pages.SensorPayloadManagement">
+
     <UserControl.Styles>
+
         <Style Selector="TextBox">
             <Setter Property="Background" Value="#101F2D"/>
             <Setter Property="Foreground" Value="#E8F0F5"/>
@@ -11,9 +14,11 @@
             <Setter Property="Padding" Value="12,9"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
+
         <Style Selector="TextBox:focus">
             <Setter Property="BorderBrush" Value="#35C978"/>
         </Style>
+
         <Style Selector="ComboBox">
             <Setter Property="Background" Value="#101F2D"/>
             <Setter Property="Foreground" Value="#E8F0F5"/>
@@ -21,6 +26,7 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
+
         <Style Selector="Button.primaryButton">
             <Setter Property="Background" Value="#207A4A"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
@@ -29,12 +35,15 @@
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
+
         <Style Selector="Button.primaryButton:pointerover">
             <Setter Property="Background" Value="#2A9660"/>
         </Style>
+
         <Style Selector="Button.primaryButton:pressed">
             <Setter Property="Background" Value="#185F3A"/>
         </Style>
+
         <Style Selector="Button.secondaryButton">
             <Setter Property="Background" Value="#142A3A"/>
             <Setter Property="Foreground" Value="#BFD0DB"/>
@@ -43,39 +52,81 @@
             <Setter Property="Padding" Value="18,10"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
+
         <Style Selector="Button.secondaryButton:pointerover">
             <Setter Property="Background" Value="#1B394D"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="BorderBrush" Value="#35C978"/>
         </Style>
+
         <Style Selector="Button.secondaryButton:pressed">
             <Setter Property="Background" Value="#21506A"/>
         </Style>
+
+        <Style Selector="Button.attachButton">
+            <Setter Property="Background" Value="#142A3A"/>
+            <Setter Property="Foreground" Value="#BFD0DB"/>
+            <Setter Property="BorderBrush" Value="#294457"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+
+        <Style Selector="Button.attachButton:pointerover">
+            <Setter Property="Background" Value="#1B394D"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#35C978"/>
+        </Style>
+
+        <Style Selector="Button.attachButton:pressed">
+            <Setter Property="Background" Value="#21506A"/>
+        </Style>
+
         <Style Selector="Border.panel">
             <Setter Property="Background" Value="#0D1B28"/>
             <Setter Property="BorderBrush" Value="#1B3447"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>
         </Style>
+
+        <Style Selector="Border.sensorCard">
+            <Setter Property="Background" Value="#101F2D"/>
+            <Setter Property="BorderBrush" Value="#1B3447"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+
+        <Style Selector="TextBlock.dataLabel">
+            <Setter Property="Foreground" Value="#637B8A"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style Selector="TextBlock.dataValue">
+            <Setter Property="Foreground" Value="#E8F0F5"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
     </UserControl.Styles>
+
     <Grid Background="#09131F">
+
         <ScrollViewer
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
-            <Grid
+
+            <StackPanel
                 Margin="28"
-                RowDefinitions="Auto,Auto,Auto,Auto,Auto"
-                RowSpacing="22">
+                Spacing="20">
+
                 <Button
-                    Grid.Row="0"
                     Classes="secondaryButton"
                     Content="←  Back to Dashboard"
                     Click="BackToDashboardButton_Click"
                     HorizontalAlignment="Left"/>
 
-                <StackPanel
-                    Grid.Row="1"
-                    Spacing="5">
+                <StackPanel Spacing="5">
+
                     <TextBlock
                         Text="SENSOR PAYLOAD MANAGEMENT"
                         Foreground="#E8F0F5"
@@ -83,20 +134,22 @@
                         FontWeight="SemiBold"/>
 
                     <TextBlock
-                        Text="Register sensors and simulate custom sensor payload records."
+                        Text="Register sensors, monitor telemetry, attach device files and simulate sensor payloads."
                         Foreground="#6F8797"
                         FontSize="13"/>
+
                 </StackPanel>
-                <!-- registration form -->
+
                 <Border
-                    Grid.Row="2"
                     Classes="panel"
                     Padding="22">
+
                     <Grid
                         ColumnDefinitions="*,*"
                         RowDefinitions="Auto,Auto,Auto,Auto"
                         ColumnSpacing="20"
                         RowSpacing="14">
+
                         <TextBlock
                             Grid.Row="0"
                             Grid.ColumnSpan="2"
@@ -109,6 +162,7 @@
                             Grid.Row="1"
                             Grid.Column="0"
                             Spacing="6">
+
                             <TextBlock
                                 Text="MAC Address / Unique Identifier"
                                 Foreground="#AFC0CC"
@@ -118,11 +172,14 @@
                                 x:Name="MacAddressTextBox"
                                 Watermark="AA:BB:CC:DD:EE:FF"
                                 Height="40"/>
+
                         </StackPanel>
+
                         <StackPanel
                             Grid.Row="1"
                             Grid.Column="1"
                             Spacing="6">
+
                             <TextBlock
                                 Text="Deployment Location"
                                 Foreground="#AFC0CC"
@@ -132,11 +189,14 @@
                                 x:Name="LocationTextBox"
                                 Watermark="Room 101 / Zone A"
                                 Height="40"/>
+
                         </StackPanel>
+
                         <StackPanel
                             Grid.Row="2"
                             Grid.Column="0"
                             Spacing="6">
+
                             <TextBlock
                                 Text="Node ID"
                                 Foreground="#AFC0CC"
@@ -146,11 +206,14 @@
                                 x:Name="NodeIdTextBox"
                                 Watermark="NODE-001"
                                 Height="40"/>
+
                         </StackPanel>
+
                         <StackPanel
                             Grid.Row="2"
                             Grid.Column="1"
                             Spacing="6">
+
                             <TextBlock
                                 Text="Sensor Category"
                                 Foreground="#AFC0CC"
@@ -160,11 +223,15 @@
                                 x:Name="SensorCategoryComboBox"
                                 Height="40"
                                 SelectedIndex="0">
+
                                 <ComboBoxItem Content="Environmental"/>
                                 <ComboBoxItem Content="Power Consumption"/>
                                 <ComboBoxItem Content="Actuator"/>
+
                             </ComboBox>
+
                         </StackPanel>
+
                         <StackPanel
                             Grid.Row="3"
                             Grid.ColumnSpan="2"
@@ -172,6 +239,7 @@
                             HorizontalAlignment="Right"
                             Spacing="10"
                             Margin="0,6,0,0">
+
                             <Button
                                 Classes="secondaryButton"
                                 Content="Clear"
@@ -181,23 +249,25 @@
                                 Classes="primaryButton"
                                 Content="Register Sensor"
                                 Click="RegisterSensorButton_Click"/>
+
                         </StackPanel>
+
                     </Grid>
+
                 </Border>
-                <!-- table is empty until RegisterSensorButton_Click actually does something -->
+
                 <Border
-                    Grid.Row="3"
                     Classes="panel"
                     Padding="22">
-                    <Grid
-                        RowDefinitions="Auto,Auto,*"
-                        RowSpacing="16">
-                        <Grid
-                            Grid.Row="0"
-                            ColumnDefinitions="*,Auto">
+
+                    <StackPanel Spacing="16">
+
+                        <Grid ColumnDefinitions="*,Auto">
+
                             <StackPanel
                                 Grid.Column="0"
                                 Spacing="3">
+
                                 <TextBlock
                                     Text="REGISTERED SENSORS"
                                     Foreground="#E8F0F5"
@@ -208,94 +278,343 @@
                                     Text="Configured sensor registration records."
                                     Foreground="#637B8A"
                                     FontSize="11"/>
+
                             </StackPanel>
+
                             <Border
                                 Grid.Column="1"
                                 Background="#142A3A"
                                 CornerRadius="12"
-                                Padding="10,5">
+                                Padding="12,6">
+
                                 <TextBlock
                                     x:Name="ActiveSensorsText"
                                     Text="0 ACTIVE"
+                                    Foreground="#35C978"
+                                    FontSize="10"
+                                    FontWeight="SemiBold"/>
+
+                            </Border>
+
+                        </Grid>
+
+                        <Border
+                            Background="#0A1722"
+                            BorderBrush="#172C3C"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="12">
+
+                            <ItemsControl
+                                x:Name="RegisteredSensorsItemsControl">
+
+                                <ItemsControl.ItemTemplate>
+
+                                    <DataTemplate
+                                        x:DataType="models:SensorRegistration">
+
+                                        <Border
+                                            Classes="sensorCard"
+                                            Padding="16"
+                                            Margin="0,0,0,10">
+
+                                            <Grid
+                                                ColumnDefinitions="*,*,Auto"
+                                                RowDefinitions="Auto,Auto"
+                                                ColumnSpacing="20"
+                                                RowSpacing="12">
+
+                                                <StackPanel
+                                                    Grid.Row="0"
+                                                    Grid.Column="0"
+                                                    Spacing="3">
+
+                                                    <TextBlock
+                                                        Classes="dataLabel"
+                                                        Text="DEVICE"/>
+
+                                                    <TextBlock
+                                                        Classes="dataValue"
+                                                        Text="{Binding MacAddress}"
+                                                        TextTrimming="CharacterEllipsis"/>
+
+                                                </StackPanel>
+
+                                                <StackPanel
+                                                    Grid.Row="0"
+                                                    Grid.Column="1"
+                                                    Spacing="3">
+
+                                                    <TextBlock
+                                                        Classes="dataLabel"
+                                                        Text="LOCATION"/>
+
+                                                    <TextBlock
+                                                        Classes="dataValue"
+                                                        Text="{Binding Location}"
+                                                        TextTrimming="CharacterEllipsis"/>
+
+                                                </StackPanel>
+
+                                                <Border
+                                                    Grid.Row="0"
+                                                    Grid.Column="2"
+                                                    Background="#123D2B"
+                                                    CornerRadius="10"
+                                                    Padding="12,5"
+                                                    VerticalAlignment="Center">
+
+                                                    <TextBlock
+                                                        Text="● ACTIVE"
+                                                        Foreground="#35C978"
+                                                        FontSize="10"
+                                                        FontWeight="SemiBold"/>
+
+                                                </Border>
+
+                                                <StackPanel
+                                                    Grid.Row="1"
+                                                    Grid.Column="0"
+                                                    Spacing="3">
+
+                                                    <TextBlock
+                                                        Classes="dataLabel"
+                                                        Text="CATEGORY"/>
+
+                                                    <TextBlock
+                                                        Classes="dataValue"
+                                                        Text="{Binding Category}"
+                                                        TextTrimming="CharacterEllipsis"/>
+
+                                                </StackPanel>
+
+                                                <StackPanel
+                                                    Grid.Row="1"
+                                                    Grid.Column="1"
+                                                    Spacing="3">
+
+                                                    <TextBlock
+                                                        Classes="dataLabel"
+                                                        Text="NODE ID"/>
+
+                                                    <TextBlock
+                                                        Classes="dataValue"
+                                                        Text="{Binding NodeId}"
+                                                        TextTrimming="CharacterEllipsis"/>
+
+                                                </StackPanel>
+
+                                                <Button
+                                                    Grid.Row="1"
+                                                    Grid.Column="2"
+                                                    Classes="attachButton"
+                                                    Content="Attach File"
+                                                    Tag="{Binding}"
+                                                    Click="AttachFileButton_Click"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Center"/>
+
+                                            </Grid>
+
+                                        </Border>
+
+                                    </DataTemplate>
+
+                                </ItemsControl.ItemTemplate>
+
+                            </ItemsControl>
+
+                        </Border>
+
+                    </StackPanel>
+
+                </Border>
+
+                <Border
+                    Classes="panel"
+                    Padding="22">
+
+                    <StackPanel Spacing="16">
+
+                        <Grid ColumnDefinitions="*,Auto">
+
+                            <StackPanel
+                                Grid.Column="0"
+                                Spacing="3">
+
+                                <TextBlock
+                                    Text="LATEST SENSOR TELEMETRY"
+                                    Foreground="#E8F0F5"
+                                    FontSize="15"
+                                    FontWeight="SemiBold"/>
+
+                                <TextBlock
+                                    Text="Most recently received payload from the Smart X API."
+                                    Foreground="#637B8A"
+                                    FontSize="11"/>
+
+                            </StackPanel>
+
+                            <Border
+                                Grid.Column="1"
+                                Background="#142A3A"
+                                CornerRadius="12"
+                                Padding="12,6">
+
+                                <TextBlock
+                                    x:Name="TelemetryStatusText"
+                                    Text="NO DATA"
                                     Foreground="#6F8797"
                                     FontSize="10"
                                     FontWeight="SemiBold"/>
+
                             </Border>
+
                         </Grid>
+
                         <Grid
-                            Grid.Row="1"
-                            ColumnDefinitions="2*,1.3*,1.4*,1*,Auto"
-                            Margin="0,5,0,0">
-                            <TextBlock
-                                Text="DEVICE"
-                                Foreground="#557080"
-                                FontSize="10"
-                                FontWeight="SemiBold"/>
+                            ColumnDefinitions="*,*,*,*"
+                            RowDefinitions="Auto,Auto"
+                            ColumnSpacing="16"
+                            RowSpacing="12">
 
-                            <TextBlock
+                            <Border
+                                Grid.Row="0"
+                                Grid.Column="0"
+                                Background="#101F2D"
+                                CornerRadius="6"
+                                Padding="14">
+
+                                <StackPanel Spacing="5">
+
+                                    <TextBlock
+                                        Classes="dataLabel"
+                                        Text="DEVICE ID"/>
+
+                                    <TextBlock
+                                        x:Name="TelemetryDeviceIdText"
+                                        Classes="dataValue"
+                                        Text="—"
+                                        TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                            </Border>
+
+                            <Border
+                                Grid.Row="0"
                                 Grid.Column="1"
-                                Text="LOCATION"
-                                Foreground="#557080"
-                                FontSize="10"
-                                FontWeight="SemiBold"/>
+                                Background="#101F2D"
+                                CornerRadius="6"
+                                Padding="14">
 
-                            <TextBlock
+                                <StackPanel Spacing="5">
+
+                                    <TextBlock
+                                        Classes="dataLabel"
+                                        Text="CATEGORY"/>
+
+                                    <TextBlock
+                                        x:Name="TelemetryCategoryText"
+                                        Classes="dataValue"
+                                        Text="—"
+                                        TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                            </Border>
+
+                            <Border
+                                Grid.Row="0"
                                 Grid.Column="2"
-                                Text="CATEGORY"
-                                Foreground="#557080"
-                                FontSize="10"
-                                FontWeight="SemiBold"/>
+                                Background="#101F2D"
+                                BorderBrush="#207A4A"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="14">
 
-                            <TextBlock
+                                <StackPanel Spacing="5">
+
+                                    <TextBlock
+                                        Classes="dataLabel"
+                                        Text="VALUE"/>
+
+                                    <TextBlock
+                                        x:Name="TelemetryValueText"
+                                        Text="—"
+                                        Foreground="#35C978"
+                                        FontSize="20"
+                                        FontWeight="SemiBold"
+                                        TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                            </Border>
+
+                            <Border
+                                Grid.Row="0"
                                 Grid.Column="3"
-                                Text="STATUS"
-                                Foreground="#557080"
-                                FontSize="10"
-                                FontWeight="SemiBold"/>
+                                Background="#101F2D"
+                                CornerRadius="6"
+                                Padding="14">
 
-                            <TextBlock
-                                Grid.Column="4"
-                                Text="NODE"
-                                Foreground="#557080"
-                                FontSize="10"
-                                FontWeight="SemiBold"/>
+                                <StackPanel Spacing="5">
+
+                                    <TextBlock
+                                        Classes="dataLabel"
+                                        Text="TIMESTAMP"/>
+
+                                    <TextBlock
+                                        x:Name="TelemetryTimestampText"
+                                        Classes="dataValue"
+                                        Text="—"
+                                        TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                            </Border>
+
+                            <Border
+                                Grid.Row="1"
+                                Grid.ColumnSpan="4"
+                                Background="#101F2D"
+                                CornerRadius="6"
+                                Padding="14">
+
+                                <StackPanel Spacing="5">
+
+                                    <TextBlock
+                                        Classes="dataLabel"
+                                        Text="API ENDPOINT"/>
+
+                                    <TextBlock
+                                        x:Name="TelemetryEndpointText"
+                                        Classes="dataValue"
+                                        Text="—"
+                                        TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                            </Border>
+
                         </Grid>
-                        <Border
-                            Grid.Row="2"
-                            Background="#101F2D"
-                            CornerRadius="5"
-                            Padding="20">
-                            <StackPanel
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Spacing="6">
-                                <TextBlock
-                                    Text="No sensors registered"
-                                    Foreground="#AFC0CC"
-                                    FontSize="13"
-                                    FontWeight="SemiBold"
-                                    HorizontalAlignment="Center"/>
 
-                                <TextBlock
-                                    Text="Register a sensor above to add a device to the system."
-                                    Foreground="#637B8A"
-                                    FontSize="11"
-                                    HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+                    </StackPanel>
+
                 </Border>
-                <!-- simulate button stays disabled until we have a sensor to pick from -->
+
                 <Border
-                    Grid.Row="4"
                     Classes="panel"
                     Padding="22">
+
                     <Grid
                         ColumnDefinitions="*,Auto"
                         ColumnSpacing="25">
+
                         <StackPanel
                             Grid.Column="0"
-                            Spacing="5">
+                            Spacing="6">
+
                             <TextBlock
                                 Text="PAYLOAD SIMULATION"
                                 Foreground="#E8F0F5"
@@ -303,7 +622,7 @@
                                 FontWeight="SemiBold"/>
 
                             <TextBlock
-                                Text="Generate a test payload using a registered sensor."
+                                Text="Generate a test telemetry payload using a registered sensor."
                                 Foreground="#637B8A"
                                 FontSize="11"/>
 
@@ -313,17 +632,26 @@
                                 Height="40"
                                 Margin="0,8,0,0"
                                 IsEnabled="False"/>
+
                         </StackPanel>
+
                         <Button
+                            x:Name="SimulatePayloadButton"
                             Grid.Column="1"
                             Classes="primaryButton"
                             Content="Simulate Payload"
                             VerticalAlignment="Center"
                             IsEnabled="False"
                             Click="SimulatePayloadButton_Click"/>
+
                     </Grid>
+
                 </Border>
-            </Grid>
+
+            </StackPanel>
+
         </ScrollViewer>
+
     </Grid>
+
 </UserControl>

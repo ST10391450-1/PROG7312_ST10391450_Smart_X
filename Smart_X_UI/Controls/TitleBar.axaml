@@ -65,13 +65,7 @@
                         FontWeight="SemiBold"
                         VerticalAlignment="Center"/>
 
-                    <TextBlock
-                        Text="SYSTEM CONTROL"
-                        Foreground="#557080"
-                        FontSize="9"
-                        FontWeight="SemiBold"
-                        VerticalAlignment="Center"
-                        Margin="3,1,0,0"/>
+                    
                 </StackPanel>
             </Border>
             <StackPanel

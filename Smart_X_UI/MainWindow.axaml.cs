@@ -10,10 +10,10 @@ namespace Smart_X_UI;
 
 public partial class MainWindow : Window
 {
-    private readonly HttpClient _httpClient;
-    private Control? _dashboardContent;
+    private const string ApiBaseUrl = "http://localhost:8080";
 
-    private const string ApiBaseUrl = "http://localhost:5001";
+    private readonly HttpClient _httpClient;
+    private readonly Control? _dashboardContent;
 
     public MainWindow()
     {
@@ -33,8 +33,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            using HttpResponseMessage response =
-                await _httpClient.GetAsync($"{ApiBaseUrl}/api/health");
+            using HttpResponseMessage response = await _httpClient.GetAsync($"{ApiBaseUrl}/api/health");
 
             if (response.IsSuccessStatusCode)
             {
@@ -45,34 +44,34 @@ public partial class MainWindow : Window
                 SetApiDisconnected($"HTTP {(int)response.StatusCode}");
             }
         }
-        catch
+        catch (TaskCanceledException)
+        {
+            SetApiDisconnected("Timeout");
+        }
+        catch (HttpRequestException)
         {
             SetApiDisconnected("Unavailable");
+        }
+        catch (Exception)
+        {
+            SetApiDisconnected("Connection error");
         }
     }
 
     private void SetApiConnected()
     {
         ApiConnectionStatusText.Text = "CONNECTED";
-        ApiConnectionStatusText.Foreground =
-            new SolidColorBrush(Color.Parse("#35B86B"));
-
+        ApiConnectionStatusText.Foreground = new SolidColorBrush(Color.Parse("#35B86B"));
         ApiStatusText.Text = "Ready";
-
-        ApiConnectionIndicator.Fill =
-            new SolidColorBrush(Color.Parse("#35B86B"));
+        ApiConnectionIndicator.Fill = new SolidColorBrush(Color.Parse("#35B86B"));
     }
 
     private void SetApiDisconnected(string reason)
     {
         ApiConnectionStatusText.Text = "DISCONNECTED";
-        ApiConnectionStatusText.Foreground =
-            new SolidColorBrush(Color.Parse("#C95B63"));
-
+        ApiConnectionStatusText.Foreground = new SolidColorBrush(Color.Parse("#C95B63"));
         ApiStatusText.Text = reason;
-
-        ApiConnectionIndicator.Fill =
-            new SolidColorBrush(Color.Parse("#C95B63"));
+        ApiConnectionIndicator.Fill = new SolidColorBrush(Color.Parse("#C95B63"));
     }
 
     private void SensorDataButton_Click(object? sender, RoutedEventArgs e)
