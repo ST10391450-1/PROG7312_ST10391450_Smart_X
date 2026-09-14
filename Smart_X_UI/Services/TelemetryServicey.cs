@@ -15,63 +15,57 @@ public class TelemetryService
         _httpClient = httpClient;
     }
 
-    public Task<HttpResponseMessage> SendTelemetryAsync(
-        SensorRegistration sensor)
+    // Sends a test telemetry value based on the sensor category.
+    public Task<HttpResponseMessage> SendTelemetryAsync( SensorRegistration sensor)
     {
         return sensor.Category switch
         {
-            "Environmental" =>
-                _httpClient.PostAsJsonAsync(
-                    "api/Telemetry/temperature",
-                    new TelemetryPacket<float>
-                    {
-                        DeviceId = sensor.NodeId,
-                        Timestamp = DateTime.UtcNow,
-                        SensorCategory = sensor.Category,
-                        Value = 22.5f
-                    }),
+            "Environmental" => _httpClient.PostAsJsonAsync(
+                "api/Telemetry/temperature",
+                new TelemetryPacket<float>
+                {
 
-            "Power Consumption" =>
-                _httpClient.PostAsJsonAsync(
-                    "api/Telemetry/power",
-                    new TelemetryPacket<int>
-                    {
-                        DeviceId = sensor.NodeId,
-                        Timestamp = DateTime.UtcNow,
-                        SensorCategory = sensor.Category,
-                        Value = 450
-                    }),
+                    DeviceId = sensor.NodeId,
+                    Timestamp = DateTime.UtcNow,
+                    SensorCategory = sensor.Category,
+                    Value = 22.5f
+                }),
 
-            "Actuator" =>
-                _httpClient.PostAsJsonAsync(
-                    "api/Telemetry/switch",
-                    new TelemetryPacket<bool>
-                    {
-                        DeviceId = sensor.NodeId,
-                        Timestamp = DateTime.UtcNow,
-                        SensorCategory = sensor.Category,
-                        Value = true
-                    }),
+            "Power Consumption" => _httpClient.PostAsJsonAsync(
+                 "api/Telemetry/power",
+                new TelemetryPacket<int>
+                {
 
-            _ => throw new InvalidOperationException(
+                    DeviceId = sensor.NodeId,
+                    Timestamp = DateTime.UtcNow,
+                    SensorCategory = sensor.Category,
+                    Value = 450
+                }),
+
+            "Actuator" => _httpClient.PostAsJsonAsync(
+            "api/Telemetry/switch",
+                new TelemetryPacket<bool>
+                {
+
+                    DeviceId = sensor.NodeId,
+                    Timestamp = DateTime.UtcNow,
+                    SensorCategory = sensor.Category,
+                    Value = true
+                }),
+
+            _   => throw new InvalidOperationException(
                 $"Unsupported sensor category: {sensor.Category}")
         };
     }
 
-    public static string GetEndpoint(
-        SensorRegistration sensor)
+    // Returns the API endpoint used by a sensor category.
+    public static string GetEndpoint(SensorRegistration  sensor)
     {
         return sensor.Category switch
         {
-            "Environmental" =>
-                "POST /api/Telemetry/temperature",
-
-            "Power Consumption" =>
-                "POST /api/Telemetry/power",
-
-            "Actuator" =>
-                "POST /api/Telemetry/switch",
-
+            "Environmental" => "POST /api/Telemetry/temperature",
+            "Power Consumption" => "POST /api/Telemetry/power",
+            "Actuator" => "POST /api/Telemetry/switch",
             _ => "POST /api/Telemetry"
         };
     }

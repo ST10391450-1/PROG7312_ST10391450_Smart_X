@@ -1,4 +1,5 @@
-﻿namespace Smart_X_API.Models;
+﻿// API model for telemetry packets.
+namespace Smart_X_API.Models;
 
 public class TelemetryPacket<T>
 {

@@ -1,4 +1,7 @@
-﻿namespace Smart_X_API.Models;
+﻿
+// Recording of stored sensor readigns
+
+namespace Smart_X_API.Models;
 
 public class SensorReadingRecord
 {

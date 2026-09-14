@@ -4,7 +4,6 @@ using Avalonia.Media;
 using Smart_X_UI.Models;
 using Smart_X_UI.Pages;
 using Smart_X_UI.Services;
-
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -13,9 +12,7 @@ namespace Smart_X_UI;
 
 public partial class MainWindow : Window
 {
-    private readonly HttpClient _httpClient =
-        ApiClient.HttpClient;
-
+    private readonly HttpClient _httpClient = ApiClient.HttpClient;
     private object? _homeContent;
 
     public MainWindow()
@@ -24,9 +21,22 @@ public partial class MainWindow : Window
 
         _homeContent = MainContent.Content;
 
+        // Keep the window responsive when it is resized.
+        SizeChanged += MainWindow_SizeChanged;
+
         _ = CheckApiConnectionAsync();
     }
 
+    private void MainWindow_SizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (MainContent.Content is Control content)
+        {
+            content.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
+            content.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch;
+        }
+    }
+
+    // Checks whether the local Smart X API is available.
     private async Task CheckApiConnectionAsync()
     {
         SetApiStatus(
@@ -37,8 +47,7 @@ public partial class MainWindow : Window
 
         try
         {
-            using HttpResponseMessage response =
-                await _httpClient.GetAsync("api/health");
+            using var response = await _httpClient.GetAsync("api/health");
 
             if (response.IsSuccessStatusCode)
             {
@@ -83,6 +92,7 @@ public partial class MainWindow : Window
         }
     }
 
+    // Updates the API and system status shown on the home screen.
     private void SetApiStatus(
         string connectionStatus,
         string statusMessage,
@@ -97,18 +107,16 @@ public partial class MainWindow : Window
         SystemStatusIndicator.Fill = statusBrush;
 
         SystemStatusText.Text = systemStatus;
+        SystemStatusText.Foreground = statusBrush;
 
         SystemStatusDescriptionText.Text =
             connectionStatus == "CONNECTED"
                 ? "Local services are available"
                 : statusMessage;
-
-        SystemStatusText.Foreground = statusBrush;
     }
 
-    private void SensorDataButton_Click(
-        object? sender,
-        RoutedEventArgs e)
+    // Opens the sensor dashboard.
+    private void SensorDataButton_Click(object? sender, RoutedEventArgs e)
     {
         ShowDashboard();
     }
@@ -117,75 +125,53 @@ public partial class MainWindow : Window
     {
         var dashboard = new SensorDashboard();
 
-        dashboard.BackRequested +=
-            Dashboard_BackRequested;
-
-        dashboard.AddSensorRequested +=
-            Dashboard_AddSensorRequested;
-
-        dashboard.AddLocationRequested +=
-            Dashboard_AddLocationRequested;
-
-        dashboard.SensorDetailsRequested +=
-            Dashboard_SensorDetailsRequested;
+        dashboard.BackRequested += Dashboard_BackRequested;
+        dashboard.AddSensorRequested += Dashboard_AddSensorRequested;
+        dashboard.AddLocationRequested += Dashboard_AddLocationRequested;
+        dashboard.SensorDetailsRequested += Dashboard_SensorDetailsRequested;
 
         MainContent.Content = dashboard;
     }
 
-    private void Dashboard_BackRequested(
-        object? sender,
-        EventArgs e)
+    // Returns from the dashboard to the home screen.
+    private void Dashboard_BackRequested(object? sender, EventArgs e)
     {
         MainContent.Content = _homeContent;
     }
 
-    private void Dashboard_AddLocationRequested(
-        object? sender,
-        EventArgs e)
+    // Opens the add location page.
+    private void Dashboard_AddLocationRequested(object? sender, EventArgs e)
     {
         var addLocation = new AddLocation();
 
-        addLocation.BackRequested +=
-            AddLocation_BackRequested;
-
-        addLocation.LocationAdded +=
-            AddLocation_LocationAdded;
+        addLocation.BackRequested += AddLocation_BackRequested;
+        addLocation.LocationAdded += AddLocation_LocationAdded;
 
         MainContent.Content = addLocation;
     }
 
-    private void AddLocation_BackRequested(
-        object? sender,
-        EventArgs e)
+    private void AddLocation_BackRequested(object? sender, EventArgs e)
     {
         ShowDashboard();
     }
 
-    private void AddLocation_LocationAdded(
-        object? sender,
-        EventArgs e)
+    private void AddLocation_LocationAdded(object? sender, EventArgs e)
     {
         ShowDashboard();
     }
 
-    private void Dashboard_AddSensorRequested(
-        object? sender,
-        EventArgs e)
+    // Opens the add sensor page.
+    private void Dashboard_AddSensorRequested(object? sender, EventArgs e)
     {
         var addSensor = new SensorAdd();
 
-        addSensor.BackRequested +=
-            AddSensor_BackRequested;
-
-        addSensor.SensorRegistered +=
-            AddSensor_SensorRegistered;
+        addSensor.BackRequested += AddSensor_BackRequested;
+        addSensor.SensorRegistered += AddSensor_SensorRegistered;
 
         MainContent.Content = addSensor;
     }
 
-    private void AddSensor_BackRequested(
-        object? sender,
-        EventArgs e)
+    private void AddSensor_BackRequested(object? sender, EventArgs e)
     {
         ShowDashboard();
     }
@@ -197,21 +183,19 @@ public partial class MainWindow : Window
         ShowDashboard();
     }
 
+    // Opens the details page for the selected sensor.
     private void Dashboard_SensorDetailsRequested(
         object? sender,
         SensorRegistration sensor)
     {
         var details = new SensorDetails(sensor);
 
-        details.BackRequested +=
-            SensorDetails_BackRequested;
+        details.BackRequested += SensorDetails_BackRequested;
 
         MainContent.Content = details;
     }
 
-    private void SensorDetails_BackRequested(
-        object? sender,
-        EventArgs e)
+    private void SensorDetails_BackRequested(object? sender, EventArgs e)
     {
         ShowDashboard();
     }

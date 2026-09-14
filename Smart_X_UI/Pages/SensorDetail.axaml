@@ -6,12 +6,10 @@
 
     <UserControl.Styles>
 
-        <!-- Buttons -->
-
         <Style Selector="Button">
-            <Setter Property="Background" Value="#1B3042"/>
-            <Setter Property="Foreground" Value="#D8E6F3"/>
-            <Setter Property="BorderBrush" Value="#29445A"/>
+            <Setter Property="Background" Value="#183047"/>
+            <Setter Property="Foreground" Value="#DCEAF3"/>
+            <Setter Property="BorderBrush" Value="#2A4A62"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="7"/>
             <Setter Property="Padding" Value="14,9"/>
@@ -19,36 +17,53 @@
         </Style>
 
         <Style Selector="Button:pointerover">
-            <Setter Property="Background" Value="#243F55"/>
+            <Setter Property="Background" Value="#21415B"/>
+            <Setter Property="BorderBrush" Value="#3A6B8C"/>
+        </Style>
+
+        <Style Selector="Button:pressed">
+            <Setter Property="Background" Value="#28516D"/>
         </Style>
 
         <Style Selector="Button.primary">
-            <Setter Property="Background" Value="#2D8CFF"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#2D8CFF"/>
+            <Setter Property="Background" Value="#237A55"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#2F9B6B"/>
         </Style>
 
         <Style Selector="Button.primary:pointerover">
-            <Setter Property="Background" Value="#4A9EFF"/>
+            <Setter Property="Background" Value="#2D9668"/>
+            <Setter Property="BorderBrush" Value="#42B982"/>
+        </Style>
+
+        <Style Selector="Button.primary:pressed">
+            <Setter Property="Background" Value="#1E6849"/>
         </Style>
 
         <Style Selector="Button.danger">
-            <Setter Property="Background" Value="#3A2026"/>
-            <Setter Property="Foreground" Value="#FF9A9A"/>
-            <Setter Property="BorderBrush" Value="#63343C"/>
+            <Setter Property="Background" Value="#3B2730"/>
+            <Setter Property="Foreground" Value="#FFB0B0"/>
+            <Setter Property="BorderBrush" Value="#67404A"/>
         </Style>
 
         <Style Selector="Button.danger:pointerover">
-            <Setter Property="Background" Value="#512A31"/>
+            <Setter Property="Background" Value="#51303A"/>
+            <Setter Property="BorderBrush" Value="#80505A"/>
+        </Style>
+
+        <Style Selector="Button.danger:pressed">
+            <Setter Property="Background" Value="#632F3B"/>
         </Style>
 
         <Style Selector="Button.back">
-            <Setter Property="Background" Value="#162636"/>
-            <Setter Property="Foreground" Value="#9EB5C8"/>
-            <Setter Property="BorderBrush" Value="#29445A"/>
+            <Setter Property="Background" Value="#152839"/>
+            <Setter Property="Foreground" Value="#AFC5D5"/>
+            <Setter Property="BorderBrush" Value="#29465C"/>
         </Style>
 
-        <!-- Cards -->
+        <Style Selector="Button.back:pointerover">
+            <Setter Property="Background" Value="#1E374C"/>
+        </Style>
 
         <Style Selector="Border.card">
             <Setter Property="Background" Value="#162636"/>
@@ -71,8 +86,6 @@
             <Setter Property="CornerRadius" Value="8"/>
         </Style>
 
-        <!-- Labels -->
-
         <Style Selector="TextBlock.label">
             <Setter Property="Foreground" Value="#8199AC"/>
             <Setter Property="FontSize" Value="11"/>
@@ -88,8 +101,6 @@
 
     <Grid Background="#0B1722"
           RowDefinitions="Auto,*">
-
-        <!-- Header -->
 
         <Border Grid.Row="0"
                 Background="#101F2D"
@@ -112,7 +123,6 @@
                                        FontSize="16"
                                        FontWeight="Bold"
                                        Foreground="#8FC5FF"/>
-
                         </Border>
 
                         <TextBlock Text="SENSOR DETAILS"
@@ -137,10 +147,7 @@
                         VerticalAlignment="Center"/>
 
             </Grid>
-
         </Border>
-
-        <!-- Main Content -->
 
         <ScrollViewer Grid.Row="1"
                       HorizontalScrollBarVisibility="Disabled"
@@ -149,8 +156,6 @@
             <StackPanel MaxWidth="950"
                         HorizontalAlignment="Center"
                         Spacing="20">
-
-                <!-- Device Information -->
 
                 <Border Classes="card"
                         Padding="26">
@@ -172,8 +177,6 @@
 
                             </StackPanel>
 
-                            <!-- Dynamic connection status -->
-
                             <Border x:Name="ConnectionStatusBadge"
                                     Grid.Column="1"
                                     Background="#3A3020"
@@ -188,8 +191,7 @@
                                     <Ellipse x:Name="ConnectionStatusIndicator"
                                              Width="7"
                                              Height="7"
-                                             Fill="#E8C76A"
-                                             VerticalAlignment="Center"/>
+                                             Fill="#E8C76A"/>
 
                                     <TextBlock x:Name="ConnectionStatusBadgeText"
                                                Text="WAITING"
@@ -198,7 +200,6 @@
                                                FontWeight="Bold"/>
 
                                 </StackPanel>
-
                             </Border>
 
                         </Grid>
@@ -208,98 +209,64 @@
                               ColumnSpacing="30"
                               RowSpacing="22">
 
-                            <!-- Node ID -->
-
                             <StackPanel Spacing="5">
-
                                 <TextBlock Text="NODE ID"
                                            Classes="label"/>
-
                                 <TextBlock x:Name="NodeIdText"
                                            Classes="value"
                                            FontWeight="SemiBold"/>
-
                             </StackPanel>
-
-                            <!-- MAC Address -->
 
                             <StackPanel Grid.Column="1"
                                         Spacing="5">
-
                                 <TextBlock Text="MAC ADDRESS"
                                            Classes="label"/>
-
                                 <TextBlock x:Name="MacAddressText"
                                            Classes="value"/>
-
                             </StackPanel>
-
-                            <!-- Category -->
 
                             <StackPanel Grid.Row="1"
                                         Spacing="5">
-
                                 <TextBlock Text="CATEGORY"
                                            Classes="label"/>
-
                                 <TextBlock x:Name="CategoryText"
                                            Classes="value"/>
-
                             </StackPanel>
-
-                            <!-- Location -->
 
                             <StackPanel Grid.Row="1"
                                         Grid.Column="1"
                                         Spacing="5">
-
                                 <TextBlock Text="LOCATION"
                                            Classes="label"/>
-
                                 <TextBlock x:Name="LocationText"
                                            Classes="value"
                                            TextWrapping="Wrap"/>
-
                             </StackPanel>
-
-                            <!-- Status -->
 
                             <StackPanel Grid.Row="2"
                                         Spacing="5">
-
                                 <TextBlock Text="STATUS"
                                            Classes="label"/>
-
                                 <TextBlock x:Name="StatusText"
                                            Text="WAITING"
                                            Foreground="#E8C76A"
                                            FontSize="15"
                                            FontWeight="SemiBold"/>
-
                             </StackPanel>
-
-                            <!-- Telemetry Endpoint -->
 
                             <StackPanel Grid.Row="2"
                                         Grid.Column="1"
                                         Spacing="5">
-
                                 <TextBlock Text="TELEMETRY ENDPOINT"
                                            Classes="label"/>
-
                                 <TextBlock x:Name="EndpointText"
                                            Classes="value"
                                            TextWrapping="Wrap"/>
-
                             </StackPanel>
 
                         </Grid>
-
                     </StackPanel>
-
                 </Border>
-
-                <!-- Telemetry -->
 
                 <Border Classes="card"
                         Padding="26">
@@ -322,7 +289,7 @@
                             </StackPanel>
 
                             <Border Grid.Column="1"
-                                    Background="#1B3042"
+                                    Background="#183047"
                                     CornerRadius="6"
                                     Padding="9,5">
 
@@ -330,7 +297,6 @@
                                            Foreground="#8FC5FF"
                                            FontSize="10"
                                            FontWeight="Bold"/>
-
                             </Border>
 
                         </Grid>
@@ -338,76 +304,54 @@
                         <Grid ColumnDefinitions="*,*,*"
                               ColumnSpacing="14">
 
-                            <!-- Telemetry Status -->
-
                             <Border Classes="metric-card"
                                     Padding="18">
 
                                 <StackPanel Spacing="8">
-
                                     <TextBlock Text="STATUS"
                                                Classes="label"/>
-
                                     <TextBlock x:Name="TelemetryStatusText"
                                                Text="WAITING"
                                                FontSize="19"
                                                FontWeight="Bold"
                                                Foreground="#E8C76A"/>
-
                                 </StackPanel>
-
                             </Border>
-
-                            <!-- Telemetry Value -->
 
                             <Border Grid.Column="1"
                                     Classes="metric-card"
                                     Padding="18">
 
                                 <StackPanel Spacing="8">
-
                                     <TextBlock Text="VALUE"
                                                Classes="label"/>
-
                                     <TextBlock x:Name="TelemetryValueText"
                                                Text="N/A"
                                                FontSize="19"
                                                FontWeight="Bold"
                                                Foreground="#8FC5FF"/>
-
                                 </StackPanel>
-
                             </Border>
-
-                            <!-- Timestamp -->
 
                             <Border Grid.Column="2"
                                     Classes="metric-card"
                                     Padding="18">
 
                                 <StackPanel Spacing="8">
-
                                     <TextBlock Text="LAST UPDATE"
                                                Classes="label"/>
-
                                     <TextBlock x:Name="TelemetryTimestampText"
                                                Text="N/A"
                                                FontSize="14"
                                                FontWeight="Bold"
                                                Foreground="#D8E6F3"
                                                TextWrapping="Wrap"/>
-
                                 </StackPanel>
-
                             </Border>
 
                         </Grid>
-
                     </StackPanel>
-
                 </Border>
-
-                <!-- Attachments -->
 
                 <Border Classes="card"
                         Padding="26">
@@ -464,23 +408,17 @@
                                         <Grid ColumnDefinitions="Auto,*,Auto,Auto"
                                               ColumnSpacing="12">
 
-                                            <!-- File Icon -->
-
                                             <Border Width="36"
                                                     Height="36"
-                                                    Background="#1B3042"
-                                                    CornerRadius="7"
-                                                    VerticalAlignment="Center">
+                                                    Background="#183047"
+                                                    CornerRadius="7">
 
                                                 <TextBlock Text="▤"
                                                            FontSize="16"
                                                            Foreground="#8FC5FF"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"/>
-
                                             </Border>
-
-                                            <!-- File Name -->
 
                                             <StackPanel Grid.Column="1"
                                                         VerticalAlignment="Center"
@@ -498,14 +436,10 @@
 
                                             </StackPanel>
 
-                                            <!-- Download -->
-
                                             <Button Grid.Column="2"
                                                     Content="Download"
                                                     Tag="{Binding}"
                                                     Click="DownloadAttachmentButton_Click"/>
-
-                                            <!-- Delete -->
 
                                             <Button Grid.Column="3"
                                                     Content="Delete"
@@ -514,7 +448,6 @@
                                                     Click="DeleteAttachmentButton_Click"/>
 
                                         </Grid>
-
                                     </Border>
 
                                 </DataTemplate>
@@ -524,10 +457,7 @@
                         </ItemsControl>
 
                     </StackPanel>
-
                 </Border>
-
-                <!-- Action Status -->
 
                 <Border Background="#101F2D"
                         BorderBrush="#233B50"
@@ -540,13 +470,10 @@
                                TextWrapping="Wrap"
                                Foreground="#BFD1DF"
                                FontSize="13"/>
-
                 </Border>
 
             </StackPanel>
-
         </ScrollViewer>
-
     </Grid>
 
 </UserControl>

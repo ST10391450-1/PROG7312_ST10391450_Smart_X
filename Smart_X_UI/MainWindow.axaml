@@ -6,14 +6,13 @@
     WindowDecorations="None"
     Width="650"
     Height="1000"
-    Background="#09131F"
+    MinWidth="520"
+    MinHeight="700"
     CanResize="True"
     CanMaximize="False"
-    MinWidth="520"
-    MinHeight="700">
+    Background="#09131F">
 
     <Window.Styles>
-
         <Style Selector="Button">
             <Setter Property="Background" Value="#102235"/>
             <Setter Property="Foreground" Value="#DCE7ED"/>
@@ -37,12 +36,12 @@
             <Setter Property="Foreground" Value="#526777"/>
             <Setter Property="BorderBrush" Value="#162A3A"/>
         </Style>
-
     </Window.Styles>
 
-    <Grid RowDefinitions="38,*">
+    <Grid
+        Background="#09131F"
+        RowDefinitions="38,*">
 
-        <!-- Custom title bar -->
         <controls:TitleBar Grid.Row="0"/>
 
         <ContentControl
@@ -58,10 +57,6 @@
                 <StackPanel
                     Margin="28"
                     Spacing="24">
-
-                    <!-- ================================================= -->
-                    <!-- HEADER / SYSTEM STATUS -->
-                    <!-- ================================================= -->
 
                     <Border
                         Background="#0B1826"
@@ -83,10 +78,7 @@
                                     Text="System Control Interface"
                                     FontSize="13"
                                     Foreground="#70899B"/>
-
                             </StackPanel>
-
-                            <!-- Dynamic system/API status -->
 
                             <Grid
                                 Grid.Row="1"
@@ -106,7 +98,6 @@
                                         Width="10"
                                         Height="10"
                                         Fill="#D6A84F"/>
-
                                 </Border>
 
                                 <StackPanel
@@ -127,7 +118,6 @@
                                         FontSize="11"
                                         Foreground="#617A8B"
                                         TextWrapping="Wrap"/>
-
                                 </StackPanel>
 
                                 <TextBlock
@@ -137,7 +127,6 @@
                                     FontWeight="Bold"
                                     Foreground="#4D6677"
                                     VerticalAlignment="Center"/>
-
                             </Grid>
 
                             <Border
@@ -145,21 +134,14 @@
                                 Height="1"
                                 Margin="0,22,0,0"
                                 Background="#193044"/>
-
                         </Grid>
-
                     </Border>
-
-                    <!-- ================================================= -->
-                    <!-- SYSTEM MODULES -->
-                    <!-- ================================================= -->
 
                     <StackPanel Spacing="12">
 
                         <Grid ColumnDefinitions="*,Auto">
 
                             <StackPanel
-                                Grid.Column="0"
                                 Spacing="3">
 
                                 <TextBlock
@@ -172,7 +154,6 @@
                                     Text="Available control and data services"
                                     FontSize="11"
                                     Foreground="#536C7D"/>
-
                             </StackPanel>
 
                             <Border
@@ -187,12 +168,8 @@
                                     FontSize="9"
                                     FontWeight="Bold"
                                     Foreground="#35B86B"/>
-
                             </Border>
-
                         </Grid>
-
-                        <!-- Sensor module -->
 
                         <Button
                             x:Name="SensorDataButton"
@@ -200,28 +177,10 @@
                             HorizontalContentAlignment="Stretch"
                             MinHeight="86">
 
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-
-                                <Border
-                                    Grid.Column="0"
-                                    Width="46"
-                                    Height="46"
-                                    CornerRadius="8"
-                                    Background="#102E2A"
-                                    Margin="0,0,16,0">
-
-                                    <TextBlock
-                                        Text="S"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontSize="19"
-                                        FontWeight="Bold"
-                                        Foreground="#35C978"/>
-
-                                </Border>
+                            <Grid ColumnDefinitions="*,Auto">
 
                                 <StackPanel
-                                    Grid.Column="1"
+                                    Grid.Column="0"
                                     VerticalAlignment="Center"
                                     Spacing="5">
 
@@ -235,11 +194,10 @@
                                         Text="Collect and process sensor data"
                                         FontSize="11"
                                         Foreground="#70899B"/>
-
                                 </StackPanel>
 
                                 <StackPanel
-                                    Grid.Column="2"
+                                    Grid.Column="1"
                                     VerticalAlignment="Center"
                                     HorizontalAlignment="Right"
                                     Spacing="6">
@@ -256,42 +214,19 @@
                                         Height="7"
                                         Fill="#35B86B"
                                         HorizontalAlignment="Right"/>
-
                                 </StackPanel>
-
                             </Grid>
-
                         </Button>
-
-                        <!-- Command stream -->
 
                         <Button
                             IsEnabled="False"
                             HorizontalContentAlignment="Stretch"
                             MinHeight="86">
 
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-
-                                <Border
-                                    Grid.Column="0"
-                                    Width="46"
-                                    Height="46"
-                                    CornerRadius="8"
-                                    Background="#101C28"
-                                    Margin="0,0,16,0">
-
-                                    <TextBlock
-                                        Text="C"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontSize="19"
-                                        FontWeight="Bold"
-                                        Foreground="#4E6474"/>
-
-                                </Border>
+                            <Grid ColumnDefinitions="*,Auto">
 
                                 <StackPanel
-                                    Grid.Column="1"
+                                    Grid.Column="0"
                                     VerticalAlignment="Center"
                                     Spacing="5">
 
@@ -305,50 +240,27 @@
                                         Text="Send commands to connected devices"
                                         FontSize="11"
                                         Foreground="#526777"/>
-
                                 </StackPanel>
 
                                 <TextBlock
-                                    Grid.Column="2"
+                                    Grid.Column="1"
                                     Text="UNAVAILABLE"
                                     FontSize="9"
                                     FontWeight="Bold"
                                     Foreground="#506575"
                                     VerticalAlignment="Center"/>
-
                             </Grid>
-
                         </Button>
-
-                        <!-- Network topology -->
 
                         <Button
                             IsEnabled="False"
                             HorizontalContentAlignment="Stretch"
                             MinHeight="86">
 
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-
-                                <Border
-                                    Grid.Column="0"
-                                    Width="46"
-                                    Height="46"
-                                    CornerRadius="8"
-                                    Background="#101C28"
-                                    Margin="0,0,16,0">
-
-                                    <TextBlock
-                                        Text="N"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontSize="19"
-                                        FontWeight="Bold"
-                                        Foreground="#4E6474"/>
-
-                                </Border>
+                            <Grid ColumnDefinitions="*,Auto">
 
                                 <StackPanel
-                                    Grid.Column="1"
+                                    Grid.Column="0"
                                     VerticalAlignment="Center"
                                     Spacing="5">
 
@@ -362,26 +274,19 @@
                                         Text="Manage connected nodes and routing"
                                         FontSize="11"
                                         Foreground="#526777"/>
-
                                 </StackPanel>
 
                                 <TextBlock
-                                    Grid.Column="2"
+                                    Grid.Column="1"
                                     Text="UNAVAILABLE"
                                     FontSize="9"
                                     FontWeight="Bold"
                                     Foreground="#506575"
                                     VerticalAlignment="Center"/>
-
                             </Grid>
-
                         </Button>
 
                     </StackPanel>
-
-                    <!-- ================================================= -->
-                    <!-- API CONNECTION -->
-                    <!-- ================================================= -->
 
                     <StackPanel Spacing="12">
 
@@ -400,8 +305,6 @@
 
                             <Grid RowDefinitions="Auto,Auto,Auto">
 
-                                <!-- Connection status -->
-
                                 <Grid
                                     Grid.Row="0"
                                     ColumnDefinitions="Auto,*,Auto">
@@ -419,7 +322,6 @@
                                             Fill="#D6A84F"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"/>
-
                                     </Border>
 
                                     <StackPanel
@@ -437,7 +339,6 @@
                                             Text="Smart X backend service"
                                             FontSize="10"
                                             Foreground="#637C8D"/>
-
                                     </StackPanel>
 
                                     <TextBlock
@@ -448,7 +349,6 @@
                                         FontWeight="Bold"
                                         Foreground="#D6A84F"
                                         VerticalAlignment="Center"/>
-
                                 </Grid>
 
                                 <Border
@@ -457,14 +357,11 @@
                                     Margin="0,16,0,14"
                                     Background="#193447"/>
 
-                                <!-- API information -->
-
                                 <Grid
                                     Grid.Row="2"
                                     ColumnDefinitions="*,*">
 
                                     <StackPanel
-                                        Grid.Column="0"
                                         Spacing="3">
 
                                         <TextBlock
@@ -479,7 +376,6 @@
                                             FontSize="12"
                                             Foreground="#B9CAD4"
                                             TextWrapping="Wrap"/>
-
                                     </StackPanel>
 
                                     <StackPanel
@@ -497,20 +393,11 @@
                                             Text="Local"
                                             FontSize="12"
                                             Foreground="#B9CAD4"/>
-
                                     </StackPanel>
-
                                 </Grid>
-
                             </Grid>
-
                         </Border>
-
                     </StackPanel>
-
-                    <!-- ================================================= -->
-                    <!-- FOOTER -->
-                    <!-- ================================================= -->
 
                     <Border
                         Height="1"
@@ -532,15 +419,10 @@
                             HorizontalAlignment="Center"
                             FontSize="9"
                             Foreground="#304858"/>
-
                     </StackPanel>
 
                 </StackPanel>
-
             </ScrollViewer>
-
         </ContentControl>
-
     </Grid>
-
 </Window>

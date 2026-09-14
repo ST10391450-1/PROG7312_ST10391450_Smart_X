@@ -3,8 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
-using Avalonia.VisualTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Smart_X_UI.Models;
 using Smart_X_UI.Services;
 using System;
@@ -21,20 +21,17 @@ namespace Smart_X_UI.Pages;
 public partial class SensorDetails : UserControl
 {
     private readonly SensorRegistration _sensor;
-
     private readonly AttachmentService _attachmentService =
         new(ApiClient.HttpClient);
 
-    private readonly ObservableCollection<SensorAttachment> _attachments =
-        new();
-
+    private readonly ObservableCollection<SensorAttachment> _attachments = new();
     private readonly DispatcherTimer _telemetryTimer;
 
     private bool _loadingTelemetry;
 
     public event EventHandler? BackRequested;
 
-    // Required by Avalonia XAML runtime loader.
+    // Required by the Avalonia XAML loader.
     public SensorDetails()
         : this(new SensorRegistration())
     {
@@ -45,7 +42,6 @@ public partial class SensorDetails : UserControl
         InitializeComponent();
 
         _sensor = sensor;
-
         AttachmentsItemsControl.ItemsSource = _attachments;
 
         _telemetryTimer = new DispatcherTimer
@@ -63,10 +59,10 @@ public partial class SensorDetails : UserControl
         _telemetryTimer.Start();
     }
 
+    // Loads the sensor information shown on the page.
     private void LoadSensorDetails()
     {
         HeaderNodeIdText.Text = _sensor.NodeId;
-
         NodeIdText.Text = _sensor.NodeId;
         MacAddressText.Text = _sensor.MacAddress;
         CategoryText.Text = _sensor.Category;
@@ -78,36 +74,28 @@ public partial class SensorDetails : UserControl
             CreateBrush(255, 58, 48, 32),
             CreateBrush(255, 102, 85, 43));
 
-        EndpointText.Text =
-            TelemetryService.GetEndpoint(_sensor);
+        EndpointText.Text = TelemetryService.GetEndpoint(_sensor);
 
         TelemetryStatusText.Text = "WAITING";
-        TelemetryStatusText.Foreground =
-            Brushes.Orange;
-
+        TelemetryStatusText.Foreground = Brushes.Orange;
         TelemetryValueText.Text = "N/A";
         TelemetryTimestampText.Text = "N/A";
     }
 
-    private async void TelemetryTimer_Tick(
-        object? sender,
-        EventArgs e)
+    private async void TelemetryTimer_Tick(object? sender, EventArgs e)
     {
         await LoadCurrentTelemetryAsync();
     }
 
+    // Gets the latest telemetry reading for the sensor.
     private async Task LoadCurrentTelemetryAsync()
     {
         if (_loadingTelemetry)
-        {
             return;
-        }
 
         if (string.IsNullOrWhiteSpace(_sensor.MacAddress))
         {
-            SetNoTelemetryState(
-                "No MAC address configured.");
-
+            SetNoTelemetryState("No MAC address configured.");
             return;
         }
 
@@ -115,43 +103,29 @@ public partial class SensorDetails : UserControl
 
         try
         {
-            string deviceId =
-                Uri.EscapeDataString(
-                    _sensor.MacAddress);
+            var deviceId = Uri.EscapeDataString(_sensor.MacAddress);
 
-            using HttpResponseMessage response =
-                await ApiClient.HttpClient.GetAsync(
-                    $"api/Telemetry?deviceId={deviceId}");
+            using var response = await ApiClient.HttpClient.GetAsync(
+                $"api/Telemetry?deviceId={deviceId}");
 
             response.EnsureSuccessStatusCode();
 
-            var readings =
-                await response.Content
-                    .ReadFromJsonAsync<
-                        List<SensorReadingRecord>>();
+            var readings = await response.Content
+                .ReadFromJsonAsync<List<SensorReadingRecord>>();
 
-            if (readings == null ||
-                readings.Count == 0)
+            if (readings == null || readings.Count == 0)
             {
-                SetNoTelemetryState(
-                    "Waiting for telemetry...");
-
+                SetNoTelemetryState("Waiting for telemetry...");
                 return;
             }
 
-            SensorReadingRecord? latestReading =
-                readings
-                    .OrderByDescending(
-                        reading =>
-                            DateTimeService.EnsureUtc(
-                                reading.Timestamp))
-                    .FirstOrDefault();
+            var latestReading = readings
+                .OrderByDescending(x => DateTimeService.EnsureUtc(x.Timestamp))
+                .FirstOrDefault();
 
             if (latestReading == null)
             {
-                SetNoTelemetryState(
-                    "Waiting for telemetry...");
-
+                SetNoTelemetryState("Waiting for telemetry...");
                 return;
             }
 
@@ -159,18 +133,15 @@ public partial class SensorDetails : UserControl
         }
         catch (HttpRequestException)
         {
-            SetConnectionErrorState(
-                "DISCONNECTED");
+            SetConnectionErrorState("DISCONNECTED");
         }
         catch (TaskCanceledException)
         {
-            SetConnectionErrorState(
-                "TIMEOUT");
+            SetConnectionErrorState("TIMEOUT");
         }
         catch (Exception ex)
         {
-            SetConnectionErrorState(
-                "ERROR");
+            SetConnectionErrorState("ERROR");
 
             ShowActionStatus(
                 $"Could not retrieve telemetry: {ex.Message}",
@@ -182,127 +153,69 @@ public partial class SensorDetails : UserControl
         }
     }
 
-    private void DisplayTelemetry(
-        SensorReadingRecord reading)
+    // Updates the telemetry information shown on screen.
+    private void DisplayTelemetry(SensorReadingRecord reading)
     {
-        bool isCurrent =
-            DateTimeService.IsRecent(
-                reading.Timestamp);
+        var isCurrent = DateTimeService.IsRecent(reading.Timestamp);
 
         if (isCurrent)
         {
             UpdateConnectionStatus(
                 "ACTIVE",
                 Brushes.LimeGreen,
-                CreateBrush(
-                    255,
-                    35,
-                    75,
-                    45),
-                CreateBrush(
-                    255,
-                    50,
-                    105,
-                    65));
+                CreateBrush(255, 35, 75, 45),
+                CreateBrush(255, 50, 105, 65));
 
-            TelemetryStatusText.Text =
-                "RECEIVED";
-
-            TelemetryStatusText.Foreground =
-                Brushes.LimeGreen;
+            TelemetryStatusText.Text = "RECEIVED";
+            TelemetryStatusText.Foreground = Brushes.LimeGreen;
         }
         else
         {
             UpdateConnectionStatus(
                 "INACTIVE",
                 Brushes.Orange,
-                CreateBrush(
-                    255,
-                    58,
-                    48,
-                    32),
-                CreateBrush(
-                    255,
-                    102,
-                    85,
-                    43));
+                CreateBrush(255, 58, 48, 32),
+                CreateBrush(255, 102, 85, 43));
 
-            TelemetryStatusText.Text =
-                "STALE";
-
-            TelemetryStatusText.Foreground =
-                Brushes.Orange;
+            TelemetryStatusText.Text = "STALE";
+            TelemetryStatusText.Foreground = Brushes.Orange;
         }
 
         TelemetryValueText.Text =
-            FormatTelemetryValue(
-                reading.Value,
-                reading.SensorCategory);
+            FormatTelemetryValue(reading.Value, reading.SensorCategory);
 
-        TelemetryTimestampText.Text =
-            DateTimeService
-                .EnsureUtc(reading.Timestamp)
-                .ToLocalTime()
-                .ToString(
-                    "yyyy-MM-dd HH:mm:ss");
+        TelemetryTimestampText.Text = DateTimeService
+            .EnsureUtc(reading.Timestamp)
+            .ToLocalTime()
+            .ToString("yyyy-MM-dd HH:mm:ss");
     }
 
-    private void SetNoTelemetryState(
-        string message)
+    private void SetNoTelemetryState(string message)
     {
         UpdateConnectionStatus(
             "INACTIVE",
             Brushes.Orange,
-            CreateBrush(
-                255,
-                58,
-                48,
-                32),
-            CreateBrush(
-                255,
-                102,
-                85,
-                43));
+            CreateBrush(255, 58, 48, 32),
+            CreateBrush(255, 102, 85, 43));
 
-        TelemetryStatusText.Text =
-            "NO DATA";
+        TelemetryStatusText.Text = "NO DATA";
+        TelemetryStatusText.Foreground = Brushes.Orange;
+        TelemetryValueText.Text = "N/A";
+        TelemetryTimestampText.Text = "N/A";
 
-        TelemetryStatusText.Foreground =
-            Brushes.Orange;
-
-        TelemetryValueText.Text =
-            "N/A";
-
-        TelemetryTimestampText.Text =
-            "N/A";
-
-        ShowActionStatus(
-            message,
-            false);
+        ShowActionStatus(message, false);
     }
 
-    private void SetConnectionErrorState(
-        string status)
+    private void SetConnectionErrorState(string status)
     {
         UpdateConnectionStatus(
             status,
             Brushes.OrangeRed,
-            CreateBrush(
-                255,
-                70,
-                32,
-                32),
-            CreateBrush(
-                255,
-                120,
-                55,
-                55));
+            CreateBrush(255, 70, 32, 32),
+            CreateBrush(255, 120, 55, 55));
 
-        TelemetryStatusText.Text =
-            status;
-
-        TelemetryStatusText.Foreground =
-            Brushes.OrangeRed;
+        TelemetryStatusText.Text = status;
+        TelemetryStatusText.Foreground = Brushes.OrangeRed;
     }
 
     private void UpdateConnectionStatus(
@@ -311,26 +224,15 @@ public partial class SensorDetails : UserControl
         IBrush background,
         IBrush border)
     {
-        StatusText.Text =
-            status;
+        StatusText.Text = status;
+        StatusText.Foreground = foreground;
 
-        StatusText.Foreground =
-            foreground;
+        ConnectionStatusBadgeText.Text = status;
+        ConnectionStatusBadgeText.Foreground = foreground;
+        ConnectionStatusIndicator.Fill = foreground;
 
-        ConnectionStatusBadgeText.Text =
-            status;
-
-        ConnectionStatusBadgeText.Foreground =
-            foreground;
-
-        ConnectionStatusIndicator.Fill =
-            foreground;
-
-        ConnectionStatusBadge.Background =
-            background;
-
-        ConnectionStatusBadge.BorderBrush =
-            border;
+        ConnectionStatusBadge.Background = background;
+        ConnectionStatusBadge.BorderBrush = border;
     }
 
     private static IBrush CreateBrush(
@@ -340,41 +242,36 @@ public partial class SensorDetails : UserControl
         byte blue)
     {
         return new SolidColorBrush(
-            Color.FromArgb(
-                alpha,
-                red,
-                green,
-                blue));
+            Color.FromArgb(alpha, red, green, blue));
     }
 
+    // Formats the telemetry value according to its sensor category.
     private static string FormatTelemetryValue(
         double value,
         string category)
     {
         if (string.Equals(
-                category,
-                "Environmental",
-                StringComparison.OrdinalIgnoreCase))
+            category,
+            "Environmental",
+            StringComparison.OrdinalIgnoreCase))
         {
             return $"{value:F1} °C";
         }
 
         if (string.Equals(
-                category,
-                "Power Consumption",
-                StringComparison.OrdinalIgnoreCase))
+            category,
+            "Power Consumption",
+            StringComparison.OrdinalIgnoreCase))
         {
             return $"{value:F0} W";
         }
 
         if (string.Equals(
-                category,
-                "Actuator",
-                StringComparison.OrdinalIgnoreCase))
+            category,
+            "Actuator",
+            StringComparison.OrdinalIgnoreCase))
         {
-            return value >= 0.5
-                ? "ON"
-                : "OFF";
+            return value >= 0.5 ? "ON" : "OFF";
         }
 
         return value % 1 == 0
@@ -382,17 +279,15 @@ public partial class SensorDetails : UserControl
             : value.ToString("F2");
     }
 
+    // Loads all attachments for the sensor.
     private async Task LoadAttachmentsAsync()
     {
         try
         {
-            AttachmentsStatusText.IsVisible =
-                false;
+            AttachmentsStatusText.IsVisible = false;
 
-            var attachments =
-                await _attachmentService
-                    .GetAttachmentsAsync(
-                        _sensor.NodeId);
+            var attachments = await _attachmentService
+                .GetAttachmentsAsync(_sensor.NodeId);
 
             _attachments.Clear();
 
@@ -403,11 +298,8 @@ public partial class SensorDetails : UserControl
 
             if (_attachments.Count == 0)
             {
-                AttachmentsStatusText.Text =
-                    "No attachments found.";
-
-                AttachmentsStatusText.IsVisible =
-                    true;
+                AttachmentsStatusText.Text = "No attachments found.";
+                AttachmentsStatusText.IsVisible = true;
             }
         }
         catch (HttpRequestException)
@@ -415,24 +307,19 @@ public partial class SensorDetails : UserControl
             AttachmentsStatusText.Text =
                 "Could not connect to the Smart X API.";
 
-            AttachmentsStatusText.IsVisible =
-                true;
+            AttachmentsStatusText.IsVisible = true;
         }
         catch (TaskCanceledException)
         {
             AttachmentsStatusText.Text =
                 "The attachment request timed out.";
 
-            AttachmentsStatusText.IsVisible =
-                true;
+            AttachmentsStatusText.IsVisible = true;
         }
         catch (Exception ex)
         {
-            AttachmentsStatusText.Text =
-                ex.Message;
-
-            AttachmentsStatusText.IsVisible =
-                true;
+            AttachmentsStatusText.Text = ex.Message;
+            AttachmentsStatusText.IsVisible = true;
         }
     }
 
@@ -447,31 +334,20 @@ public partial class SensorDetails : UserControl
         object? sender,
         RoutedEventArgs e)
     {
-        if (TopLevel.GetTopLevel(this)
-            is not TopLevel topLevel)
-        {
+        if (TopLevel.GetTopLevel(this) is not TopLevel topLevel)
             return;
-        }
 
-        var files =
-            await topLevel.StorageProvider
-                .OpenFilePickerAsync(
-                    new FilePickerOpenOptions
-                    {
-                        Title =
-                            "Select attachment",
-
-                        AllowMultiple =
-                            false
-                    });
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(
+            new FilePickerOpenOptions
+            {
+                Title = "Select attachment",
+                AllowMultiple = false
+            });
 
         if (files.Count == 0)
-        {
             return;
-        }
 
-        string? path =
-            files[0].TryGetLocalPath();
+        var path = files[0].TryGetLocalPath();
 
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -484,10 +360,9 @@ public partial class SensorDetails : UserControl
 
         try
         {
-            await _attachmentService
-                .UploadAttachmentAsync(
-                    _sensor.NodeId,
-                    path);
+            await _attachmentService.UploadAttachmentAsync(
+                _sensor.NodeId,
+                path);
 
             ShowActionStatus(
                 "Attachment uploaded successfully.",
@@ -509,9 +384,7 @@ public partial class SensorDetails : UserControl
         }
         catch (Exception ex)
         {
-            ShowActionStatus(
-                ex.Message,
-                false);
+            ShowActionStatus(ex.Message, false);
         }
     }
 
@@ -525,31 +398,20 @@ public partial class SensorDetails : UserControl
             return;
         }
 
-        if (TopLevel.GetTopLevel(this)
-            is not TopLevel topLevel)
-        {
+        if (TopLevel.GetTopLevel(this) is not TopLevel topLevel)
             return;
-        }
 
-        var file =
-            await topLevel.StorageProvider
-                .SaveFilePickerAsync(
-                    new FilePickerSaveOptions
-                    {
-                        Title =
-                            "Save attachment",
-
-                        SuggestedFileName =
-                            attachment.FileName
-                    });
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(
+            new FilePickerSaveOptions
+            {
+                Title = "Save attachment",
+                SuggestedFileName = attachment.FileName
+            });
 
         if (file is null)
-        {
             return;
-        }
 
-        string? path =
-            file.TryGetLocalPath();
+        var path = file.TryGetLocalPath();
 
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -562,17 +424,14 @@ public partial class SensorDetails : UserControl
 
         try
         {
-            await using Stream source =
-                await _attachmentService
-                    .DownloadAttachmentAsync(
-                        _sensor.NodeId,
-                        attachment.Id);
+            await using var source =
+                await _attachmentService.DownloadAttachmentAsync(
+                    _sensor.NodeId,
+                    attachment.Id);
 
-            await using FileStream destination =
-                File.Create(path);
+            await using var destination = File.Create(path);
 
-            await source.CopyToAsync(
-                destination);
+            await source.CopyToAsync(destination);
 
             ShowActionStatus(
                 "Attachment downloaded successfully.",
@@ -592,9 +451,7 @@ public partial class SensorDetails : UserControl
         }
         catch (Exception ex)
         {
-            ShowActionStatus(
-                ex.Message,
-                false);
+            ShowActionStatus(ex.Message, false);
         }
     }
 
@@ -610,13 +467,11 @@ public partial class SensorDetails : UserControl
 
         try
         {
-            await _attachmentService
-                .DeleteAttachmentAsync(
-                    _sensor.NodeId,
-                    attachment.Id);
+            await _attachmentService.DeleteAttachmentAsync(
+                _sensor.NodeId,
+                attachment.Id);
 
-            _attachments.Remove(
-                attachment);
+            _attachments.Remove(attachment);
 
             ShowActionStatus(
                 "Attachment deleted successfully.",
@@ -624,11 +479,8 @@ public partial class SensorDetails : UserControl
 
             if (_attachments.Count == 0)
             {
-                AttachmentsStatusText.Text =
-                    "No attachments found.";
-
-                AttachmentsStatusText.IsVisible =
-                    true;
+                AttachmentsStatusText.Text = "No attachments found.";
+                AttachmentsStatusText.IsVisible = true;
             }
         }
         catch (HttpRequestException)
@@ -645,26 +497,17 @@ public partial class SensorDetails : UserControl
         }
         catch (Exception ex)
         {
-            ShowActionStatus(
-                ex.Message,
-                false);
+            ShowActionStatus(ex.Message, false);
         }
     }
 
-    private void ShowActionStatus(
-        string message,
-        bool success)
+    private void ShowActionStatus(string message, bool success)
     {
-        ActionStatusText.Text =
-            message;
-
+        ActionStatusText.Text = message;
         ActionStatusText.Foreground =
-            success
-                ? Brushes.LimeGreen
-                : Brushes.OrangeRed;
+            success ? Brushes.LimeGreen : Brushes.OrangeRed;
 
-        ActionStatusText.IsVisible =
-            true;
+        ActionStatusText.IsVisible = true;
     }
 
     private void BackButton_Click(
@@ -673,9 +516,7 @@ public partial class SensorDetails : UserControl
     {
         _telemetryTimer.Stop();
 
-        BackRequested?.Invoke(
-            this,
-            EventArgs.Empty);
+        BackRequested?.Invoke(this, EventArgs.Empty);
     }
 
     protected override void OnDetachedFromVisualTree(

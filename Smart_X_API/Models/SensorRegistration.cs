@@ -1,4 +1,6 @@
-﻿namespace Smart_X_API.Models;
+﻿// Model for the data required to store Sensors 
+
+namespace Smart_X_API.Models;
 
 public class SensorRegistration
 {

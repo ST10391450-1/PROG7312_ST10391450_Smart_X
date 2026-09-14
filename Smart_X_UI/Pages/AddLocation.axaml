@@ -4,7 +4,6 @@
     x:Class="Smart_X_UI.Pages.AddLocation">
 
     <UserControl.Styles>
-
         <Style Selector="TextBlock.label">
             <Setter Property="Foreground" Value="#AFC3D4"/>
             <Setter Property="FontSize" Value="12"/>
@@ -43,12 +42,11 @@
             <Setter Property="Background" Value="#162636"/>
             <Setter Property="Foreground" Value="#AFC3D4"/>
         </Style>
-
     </UserControl.Styles>
 
     <Grid
-        RowDefinitions="Auto,*"
-        Background="#0B1722">
+        Background="#0B1722"
+        RowDefinitions="Auto,*">
 
         <Border
             Grid.Row="0"
@@ -60,7 +58,6 @@
             <Grid ColumnDefinitions="*,Auto">
 
                 <StackPanel Spacing="5">
-
                     <TextBlock
                         Text="ADD LOCATION"
                         FontSize="24"
@@ -71,7 +68,6 @@
                         Text="Create a deployment location for Smart X sensors."
                         FontSize="13"
                         Foreground="#8FA6B8"/>
-
                 </StackPanel>
 
                 <Button
@@ -79,9 +75,7 @@
                     Content="←  Back"
                     Classes="back"
                     Click="BackButton_Click"/>
-
             </Grid>
-
         </Border>
 
         <ScrollViewer
@@ -101,7 +95,6 @@
                 <StackPanel Spacing="22">
 
                     <StackPanel Spacing="5">
-
                         <TextBlock
                             Text="LOCATION DETAILS"
                             FontSize="18"
@@ -112,11 +105,9 @@
                             Text="Define where sensors will be deployed."
                             FontSize="13"
                             Foreground="#8FA6B8"/>
-
                     </StackPanel>
 
                     <StackPanel Spacing="7">
-
                         <TextBlock
                             Text="PARENT LOCATION"
                             Classes="label"/>
@@ -130,11 +121,9 @@
                             FontSize="11"
                             Foreground="#71899B"
                             TextWrapping="Wrap"/>
-
                     </StackPanel>
 
                     <StackPanel Spacing="7">
-
                         <TextBlock
                             Text="LOCATION NAME"
                             Classes="label"/>
@@ -150,7 +139,6 @@
                             Foreground="#FF6B6B"
                             FontSize="12"
                             IsVisible="False"/>
-
                     </StackPanel>
 
                     <Border
@@ -161,7 +149,6 @@
                         Padding="16">
 
                         <StackPanel Spacing="7">
-
                             <TextBlock
                                 Text="LOCATION PREVIEW"
                                 Classes="label"/>
@@ -173,9 +160,7 @@
                                 FontSize="15"
                                 FontWeight="SemiBold"
                                 TextWrapping="Wrap"/>
-
                         </StackPanel>
-
                     </Border>
 
                     <Border
@@ -192,7 +177,6 @@
                             Foreground="#8FC5FF"
                             FontSize="13"
                             TextWrapping="Wrap"/>
-
                     </Border>
 
                     <Grid
@@ -209,15 +193,10 @@
                             Content="Add Location"
                             Classes="primary"
                             Click="AddLocationButton_Click"/>
-
                     </Grid>
 
                 </StackPanel>
-
             </Border>
-
         </ScrollViewer>
-
     </Grid>
-
 </UserControl>

@@ -16,6 +16,7 @@ class SensorSimulator:
         self.sensors = {}
         self.running = True
 
+    # Gets all sensors currently registered with the API.
     def get_registered_sensors(self):
         try:
             response = requests.get(
@@ -31,9 +32,9 @@ class SensorSimulator:
             print(f"[API] Unable to retrieve sensors: {error}")
             return []
 
+    # Checks for new or removed sensors.
     def discover_sensors(self):
         registered_sensors = self.get_registered_sensors()
-
         registered_macs = set()
 
         for sensor in registered_sensors:
@@ -42,19 +43,18 @@ class SensorSimulator:
             if not mac_address:
                 continue
 
-            registered_macs.add(mac_address.lower())
+            mac = mac_address.lower()
+            registered_macs.add(mac)
 
-            if mac_address.lower() not in self.sensors:
-                self.sensors[mac_address.lower()] = sensor
-
+            if mac not in self.sensors:
                 print(
                     f"[CONNECTED] "
                     f"{sensor.get('nodeId', 'Unknown')} | "
                     f"MAC: {mac_address} | "
                     f"Category: {sensor.get('category', 'Unknown')}"
                 )
-            else:
-                self.sensors[mac_address.lower()] = sensor
+
+            self.sensors[mac] = sensor
 
         removed_sensors = [
             mac
@@ -71,19 +71,19 @@ class SensorSimulator:
                 f"MAC: {sensor.get('macAddress', mac)}"
             )
 
+    # Generates telemetry based on each sensor's category.
     def generate_telemetry(self):
         for sensor in list(self.sensors.values()):
-
-            category = sensor.get("category", "").strip()
+            category = sensor.get("category", "").strip().lower()
 
             try:
-                if category.lower() == "environmental":
+                if category == "environmental":
                     self.send_temperature(sensor)
 
-                elif category.lower() == "power consumption":
+                elif category == "power consumption":
                     self.send_power(sensor)
 
-                elif category.lower() == "actuator":
+                elif category == "actuator":
                     self.send_switch(sensor)
 
             except requests.RequestException as error:
@@ -92,6 +92,7 @@ class SensorSimulator:
                     f"Telemetry failed: {error}"
                 )
 
+    # Sends a simulated temperature reading.
     def send_temperature(self, sensor):
         temperature = round(
             random.uniform(20.0, 28.0),
@@ -111,17 +112,11 @@ class SensorSimulator:
             timeout=10
         )
 
-        self.handle_response(
-            response,
-            sensor,
-            temperature
-        )
+        self.handle_response(response, sensor, temperature)
 
+    # Sends a simulated power reading.
     def send_power(self, sensor):
-        power = random.randint(
-            100,
-            2500
-        )
+        power = random.randint(100, 2500)
 
         packet = {
             "deviceId": sensor["macAddress"],
@@ -136,17 +131,11 @@ class SensorSimulator:
             timeout=10
         )
 
-        self.handle_response(
-            response,
-            sensor,
-            power
-        )
+        self.handle_response(response, sensor, power)
 
+    # Sends a simulated actuator state.
     def send_switch(self, sensor):
-        state = random.choice([
-            True,
-            False
-        ])
+        state = random.choice([True, False])
 
         packet = {
             "deviceId": sensor["macAddress"],
@@ -161,23 +150,12 @@ class SensorSimulator:
             timeout=10
         )
 
-        self.handle_response(
-            response,
-            sensor,
-            state
-        )
+        self.handle_response(response, sensor, state)
 
+    # Displays the result of a telemetry request.
     def handle_response(self, response, sensor, value):
-
-        node_id = sensor.get(
-            "nodeId",
-            "Unknown"
-        )
-
-        mac_address = sensor.get(
-            "macAddress",
-            "Unknown"
-        )
+        node_id = sensor.get("nodeId", "Unknown")
+        mac_address = sensor.get("macAddress", "Unknown")
 
         if response.ok:
             print(
@@ -186,7 +164,6 @@ class SensorSimulator:
                 f"{mac_address} | "
                 f"{value}"
             )
-
         else:
             print(
                 f"[REJECTED] "
@@ -197,12 +174,10 @@ class SensorSimulator:
 
     @staticmethod
     def timestamp():
-        return datetime.now(
-            timezone.utc
-        ).isoformat()
+        return datetime.now(timezone.utc).isoformat()
 
+    # Runs the simulator until it is stopped.
     def run(self):
-
         print("=" * 45)
         print("       Smart X Sensor Simulator")
         print("=" * 45)
@@ -218,20 +193,13 @@ class SensorSimulator:
 
         try:
             while self.running:
-
                 current_time = time.time()
 
-                if (
-                    current_time - last_discovery
-                    >= DISCOVERY_INTERVAL
-                ):
+                if current_time - last_discovery >= DISCOVERY_INTERVAL:
                     self.discover_sensors()
                     last_discovery = current_time
 
-                if (
-                    current_time - last_telemetry
-                    >= TELEMETRY_INTERVAL
-                ):
+                if current_time - last_telemetry >= TELEMETRY_INTERVAL:
                     self.generate_telemetry()
                     last_telemetry = current_time
 

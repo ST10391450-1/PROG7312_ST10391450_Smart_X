@@ -1,8 +1,14 @@
+
+
+
+
+
 <UserControl
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     x:Class="Smart_X_UI.Controls.TitleBar"
     Height="38">
+
     <UserControl.Styles>
         <Style Selector="Button.titleButton">
             <Setter Property="Background" Value="Transparent"/>
@@ -13,13 +19,16 @@
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+
         <Style Selector="Button.titleButton:pointerover">
             <Setter Property="Background" Value="#18364A"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
         </Style>
+
         <Style Selector="Button.titleButton:pressed">
             <Setter Property="Background" Value="#21506A"/>
         </Style>
+
         <Style Selector="Button.closeButton">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#AFC0CC"/>
@@ -29,28 +38,35 @@
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+
         <Style Selector="Button.closeButton:pointerover">
             <Setter Property="Background" Value="#8F3038"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
         </Style>
+
         <Style Selector="Button.closeButton:pressed">
             <Setter Property="Background" Value="#B83B45"/>
         </Style>
     </UserControl.Styles>
+
     <Border
         Background="#0B1824"
         BorderBrush="#183044"
         BorderThickness="0,0,0,1">
+
         <Grid ColumnDefinitions="*,Auto">
+
             <Border
                 Grid.Column="0"
                 Background="Transparent"
                 PointerPressed="TitleArea_PointerPressed">
+
                 <StackPanel
                     Orientation="Horizontal"
                     VerticalAlignment="Center"
                     Margin="14,0,0,0"
                     Spacing="9">
+
                     <Border
                         Width="7"
                         Height="7"
@@ -64,14 +80,14 @@
                         FontSize="13"
                         FontWeight="SemiBold"
                         VerticalAlignment="Center"/>
-
-                    
                 </StackPanel>
             </Border>
+
             <StackPanel
                 Grid.Column="1"
                 Orientation="Horizontal"
                 VerticalAlignment="Stretch">
+
                 <Button
                     Classes="titleButton"
                     Width="44"

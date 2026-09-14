@@ -1,4 +1,5 @@
-﻿using Avalonia;
+﻿
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -9,9 +10,9 @@ namespace Smart_X_UI.Services;
 
 public class DialogService
 {
-    public async Task ShowMessageAsync(
-        TopLevel? topLevel,
-        string message)
+
+    // Shows a simple message dialog.
+    public async Task ShowMessageAsync(TopLevel? topLevel, string message)
     {
         if (topLevel is not Window owner)
         {
@@ -52,8 +53,10 @@ public class DialogService
             Content = panel
         };
 
+
         okButton.Click += (_, _) => dialog.Close();
 
         await dialog.ShowDialog(owner);
     }
+
 }

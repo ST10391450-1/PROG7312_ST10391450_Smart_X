@@ -16,19 +16,20 @@ public class SensorService
         _httpClient = httpClient;
     }
 
+    // Gets all registered sensors from the API.
     public async Task<List<SensorRegistration>> GetSensorsAsync()
     {
         return await _httpClient.GetFromJsonAsync<List<SensorRegistration>>(
             "api/Sensors") ?? new List<SensorRegistration>();
     }
 
+    // Registers a new sensor with the API.
     public async Task<SensorRegistration> RegisterSensorAsync(
         SensorRegistration sensor)
     {
-        using HttpResponseMessage response =
-            await _httpClient.PostAsJsonAsync(
-                "api/Sensors",
-                sensor);
+        using var response = await _httpClient.PostAsJsonAsync(
+            "api/Sensors",
+            sensor);
 
         response.EnsureSuccessStatusCode();
 
@@ -37,25 +38,21 @@ public class SensorService
             ?? sensor;
     }
 
-    public async Task DeleteSensorAsync(string nodeId)
+    // Removes a sensor from the AP
+   public async Task DeleteSensorAsync(string nodeId)
     {
-        using HttpResponseMessage response =
-            await _httpClient.DeleteAsync(
-                $"api/Sensors/{Uri.EscapeDataString(nodeId)}");
+        using var response = await _httpClient.DeleteAsync(
+            $"api/Sensors/{Uri.EscapeDataString(nodeId)}");
 
         response.EnsureSuccessStatusCode();
     }
-
     public async Task<SensorRegistration?> GetSensorAsync(string nodeId)
     {
-        using HttpResponseMessage response =
-            await _httpClient.GetAsync(
-                $"api/Sensors/{Uri.EscapeDataString(nodeId)}");
+        using var response = await _httpClient.GetAsync(
+            $"api/Sensors/{Uri.EscapeDataString(nodeId)}");
 
         if (!response.IsSuccessStatusCode)
-        {
             return null;
-        }
 
         return await response.Content
             .ReadFromJsonAsync<SensorRegistration>();

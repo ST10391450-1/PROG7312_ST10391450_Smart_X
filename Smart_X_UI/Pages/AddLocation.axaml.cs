@@ -1,4 +1,6 @@
-﻿using Avalonia.Controls;
+﻿
+
+using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Smart_X_UI.Services;
 using System;
@@ -10,13 +12,23 @@ namespace Smart_X_UI.Pages;
 
 public partial class AddLocation : UserControl
 {
+    #region Fields
+
     private readonly LocationService _locationService =
         new(ApiClient.HttpClient);
 
     private readonly List<string> _locations = new();
 
+    #endregion
+
+    #region Events
+
     public event EventHandler? BackRequested;
     public event EventHandler? LocationAdded;
+
+    #endregion
+
+    #region Constructor
 
     public AddLocation()
     {
@@ -26,6 +38,11 @@ public partial class AddLocation : UserControl
         UpdateLocationPreview();
     }
 
+    #endregion
+
+    #region Locations
+
+    // Loads the existing deployment locations.
     private async Task LoadLocationsAsync()
     {
         try
@@ -46,6 +63,7 @@ public partial class AddLocation : UserControl
         }
     }
 
+    // Updates the preview when the location name changes.
     private void LocationNameTextBox_TextChanged(
         object? sender,
         TextChangedEventArgs e)
@@ -56,6 +74,7 @@ public partial class AddLocation : UserControl
         UpdateLocationPreview();
     }
 
+    // Updates the preview when the parent location changes.
     private void ParentLocationComboBox_SelectionChanged(
         object? sender,
         SelectionChangedEventArgs e)
@@ -63,12 +82,13 @@ public partial class AddLocation : UserControl
         UpdateLocationPreview();
     }
 
+    // Shows the full location path before it is added.
     private void UpdateLocationPreview()
     {
-        string name =
+        var name =
             LocationNameTextBox?.Text?.Trim() ?? string.Empty;
 
-        string parent =
+        var parent =
             ParentLocationComboBox?.SelectedItem?.ToString()
             ?? string.Empty;
 
@@ -88,6 +108,11 @@ public partial class AddLocation : UserControl
                 : $"{parent} / {name}";
     }
 
+    #endregion
+
+    #region Adding Locations
+
+    // Validates and adds the new location.
     private async void AddLocationButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -95,16 +120,14 @@ public partial class AddLocation : UserControl
         var addButton = sender as Button;
 
         if (addButton != null)
-        {
             addButton.IsEnabled = false;
-        }
 
         try
         {
-            string name =
+            var name =
                 LocationNameTextBox.Text?.Trim() ?? string.Empty;
 
-            string parent =
+            var parent =
                 ParentLocationComboBox.SelectedItem?.ToString()
                 ?? string.Empty;
 
@@ -131,17 +154,16 @@ public partial class AddLocation : UserControl
                 return;
             }
 
-            string location =
+            var location =
                 string.IsNullOrWhiteSpace(parent)
                     ? name
                     : $"{parent} / {name}";
 
-            bool alreadyExists =
-                _locations.Exists(existing =>
-                    string.Equals(
-                        existing,
-                        location,
-                        StringComparison.OrdinalIgnoreCase));
+            var alreadyExists = _locations.Exists(existing =>
+                string.Equals(
+                    existing,
+                    location,
+                    StringComparison.OrdinalIgnoreCase));
 
             if (alreadyExists)
             {
@@ -185,22 +207,23 @@ public partial class AddLocation : UserControl
         finally
         {
             if (addButton != null)
-            {
                 addButton.IsEnabled = true;
-            }
         }
     }
 
+    #endregion
+
+    #region Form
+
+    // Clears the location form.
     private void ClearButton_Click(
         object? sender,
         RoutedEventArgs e)
     {
         LocationNameTextBox.Clear();
-
         ParentLocationComboBox.SelectedItem = null;
 
         LocationNameErrorText.IsVisible = false;
-
         StatusBorder.IsVisible = false;
 
         UpdateLocationPreview();
@@ -208,6 +231,11 @@ public partial class AddLocation : UserControl
         LocationNameTextBox.Focus();
     }
 
+    #endregion
+
+    #region Navigation
+
+    // Returns to the previous page.
     private void BackButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -217,6 +245,11 @@ public partial class AddLocation : UserControl
             EventArgs.Empty);
     }
 
+    #endregion
+
+    #region Status
+
+    // Shows a success or error message.
     private void ShowStatus(
         string message,
         bool isError)
@@ -230,4 +263,6 @@ public partial class AddLocation : UserControl
 
         StatusBorder.IsVisible = true;
     }
+
+    #endregion
 }

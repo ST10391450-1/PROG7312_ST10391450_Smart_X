@@ -19,62 +19,47 @@ public class LocationsController : ControllerBase
         _validationService = validationService;
     }
 
+    // Returns all deployment locations.
     [HttpGet]
     public IActionResult GetLocations()
     {
-        return Ok(
-            _locationService.GetLocations());
+        return Ok(_locationService.GetLocations());
     }
 
+    // Adds a new deployment location after validating it.
     [HttpPost]
     public IActionResult AddLocation(
         [FromBody] DeploymentLocation location)
     {
         if (location == null)
-        {
-            return BadRequest(
-                "A deployment location is required.");
-        }
+            return BadRequest("A deployment location is required.");
 
         if (!_validationService.Validate(location))
-        {
-            return BadRequest(
-                "The deployment location tree is invalid.");
-        }
+            return BadRequest("The deployment location tree is invalid.");
 
         if (_locationService.LocationExists(location))
-        {
-            return Conflict(
-                "The deployment location already exists.");
-        }
+            return Conflict("The deployment location already exists.");
 
         if (!_locationService.AddLocation(location))
-        {
-            return BadRequest(
-                "The deployment location could not be added.");
-        }
+            return BadRequest("The deployment location could not be added.");
 
-        return Created(
-            "api/Locations",
-            location);
+        return Created("api/Locations", location);
     }
 
+    // Checks whether a deployment location is valid.
     [HttpPost("validate")]
     public IActionResult ValidateLocation(
         [FromBody] DeploymentLocation location)
     {
         if (location == null)
-        {
-            return BadRequest(
-                "A deployment location is required.");
-        }
+            return BadRequest("A deployment location is required.");
 
-        bool valid =
-            _validationService.Validate(location);
+        var isValid = _validationService.Validate(location);
 
         return Ok(new
         {
-            Valid = valid
+            Valid = isValid
         });
     }
 }
+

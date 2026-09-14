@@ -1,7 +1,8 @@
-﻿using Smart_X_API.Models;
+﻿
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Smart_X_API.Models;
 
 namespace Smart_X_API.Services;
 
@@ -9,51 +10,45 @@ public class LocationService
 {
     private static readonly List<DeploymentLocation> Locations = new();
 
+    // Returns all stored deployment locations.
     public List<DeploymentLocation> GetLocations()
     {
         return Locations;
     }
 
+    // Adds a new location or updates an existing one.
     public bool AddLocation(DeploymentLocation location)
     {
-        if (location == null ||
-            string.IsNullOrWhiteSpace(location.Name))
-        {
+        if (location == null || string.IsNullOrWhiteSpace(location.Name))
             return false;
-        }
 
-        DeploymentLocation? existingRoot =
-            Locations.FirstOrDefault(existing =>
-                string.Equals(
-                    existing.Name,
-                    location.Name,
-                    StringComparison.OrdinalIgnoreCase));
+        var existingLocation = Locations.FirstOrDefault(existing =>
+            string.Equals(existing.Name, location.Name, StringComparison.OrdinalIgnoreCase));
 
-        if (existingRoot == null)
+        if (existingLocation == null)
         {
             Locations.Add(location);
             return true;
         }
 
-        existingRoot.Type = location.Type;
-        existingRoot.IsConfigured = location.IsConfigured;
+        existingLocation.Type = location.Type;
+        existingLocation.IsConfigured = location.IsConfigured;
 
         foreach (var child in location.Children)
         {
-            MergeChild(existingRoot, child);
+            MergeChild(existingLocation, child);
         }
 
         return true;
     }
 
-    public bool LocationExists(
-        DeploymentLocation location)
+    // Checks whether a location already exists.
+    public bool LocationExists(DeploymentLocation location)
     {
-        return FindLocation(
-            Locations,
-            location) != null;
+        return FindLocation(Locations, location) != null;
     }
 
+    // Searches through the location hierarchy for a matching location.
     private static DeploymentLocation? FindLocation(
         IEnumerable<DeploymentLocation> locations,
         DeploymentLocation target)
@@ -69,50 +64,43 @@ public class LocationService
             }
 
             if (target.Children.Count == 0)
-            {
                 return location;
-            }
 
             foreach (var child in target.Children)
             {
-                DeploymentLocation? found =
-                    FindLocation(
-                        location.Children,
-                        child);
+                var found = FindLocation(location.Children, child);
 
                 if (found != null)
-                {
                     return found;
-                }
             }
         }
 
         return null;
     }
 
+    // Adds a child location or updates an existing child.
     private static void MergeChild(
         DeploymentLocation parent,
         DeploymentLocation child)
     {
-        DeploymentLocation? existing =
-            parent.Children.FirstOrDefault(existingChild =>
-                string.Equals(
-                    existingChild.Name,
-                    child.Name,
-                    StringComparison.OrdinalIgnoreCase));
+        var existingChild = parent.Children.FirstOrDefault(existing =>
+            string.Equals(
+                existing.Name,
+                child.Name,
+                StringComparison.OrdinalIgnoreCase));
 
-        if (existing == null)
+        if (existingChild == null)
         {
             parent.Children.Add(child);
             return;
         }
 
-        existing.Type = child.Type;
-        existing.IsConfigured = child.IsConfigured;
+        existingChild.Type = child.Type;
+        existingChild.IsConfigured = child.IsConfigured;
 
         foreach (var grandChild in child.Children)
         {
-            MergeChild(existing, grandChild);
+            MergeChild(existingChild, grandChild);
         }
     }
 }

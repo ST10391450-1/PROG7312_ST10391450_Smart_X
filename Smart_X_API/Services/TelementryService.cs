@@ -1,16 +1,22 @@
-﻿using Smart_X_API.Models;
+﻿
+using Smart_X_API.Models;
 
 namespace Smart_X_API.Services;
 
 public class TelemetryService
 {
-    private readonly List<SensorReadingRecord> _processedTelemetry = new();
-    private readonly List<double> _historicalValues = new();
+    private readonly List<SensorReadingRecord> _readings = new();
+    private readonly List<double> _history = new();
     private readonly object _lock = new();
 
-    public SensorReadingRecord AddReading(string deviceId, string sensorCategory, double value, DateTime timestamp)
+    // Saves a new sensor reading.
+    public SensorReadingRecord AddReading(
+        string deviceId,
+        string sensorCategory,
+        double value,
+        DateTime timestamp)
     {
-        var record = new SensorReadingRecord
+        var reading = new SensorReadingRecord
         {
             DeviceId = deviceId,
             SensorCategory = sensorCategory,
@@ -20,79 +26,83 @@ public class TelemetryService
 
         lock (_lock)
         {
-            _processedTelemetry.Add(record);
-            _historicalValues.Add(value);
+            _readings.Add(reading);
+            _history.Add(value);
         }
 
-        return record;
+        return reading;
     }
 
-    public IReadOnlyList<SensorReadingRecord> GetReadings(string? deviceId = null)
+    // Returns all readings, or only readings from a specific device.
+    public IReadOnlyList<SensorReadingRecord> GetReadings(
+        string? deviceId = null)
     {
         lock (_lock)
         {
             if (string.IsNullOrWhiteSpace(deviceId))
-            {
-                return _processedTelemetry.ToList();
-            }
+                return _readings.ToList();
 
-            return _processedTelemetry
-                .Where(x => x.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase))
+            return _readings
+                .Where(reading =>
+                    reading.DeviceId.Equals(
+                        deviceId,
+                        StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
     }
 
+    // Flattens a 2D array of sensor values into a single list.
     public IReadOnlyList<double> ProcessRawBatch(double[,] rawBatch)
     {
         ArgumentNullException.ThrowIfNull(rawBatch);
 
-        var processedBatch = new List<double>(rawBatch.GetLength(0) * rawBatch.GetLength(1));
+        var values = new List<double>();
 
         for (int row = 0; row < rawBatch.GetLength(0); row++)
         {
             for (int column = 0; column < rawBatch.GetLength(1); column++)
             {
-                processedBatch.Add(rawBatch[row, column]);
+                values.Add(rawBatch[row, column]);
             }
         }
 
         lock (_lock)
         {
-            _historicalValues.AddRange(processedBatch);
+            _history.AddRange(values);
         }
 
-        return processedBatch;
+        return values;
     }
 
+    // Flattens a jagged array of sensor values into a single list.
     public IReadOnlyList<double> ProcessJaggedBatch(double[][] rawBatch)
     {
         ArgumentNullException.ThrowIfNull(rawBatch);
 
-        var processedBatch = new List<double>();
+        var values = new List<double>();
 
-        foreach (double[] row in rawBatch)
+        foreach (var row in rawBatch)
         {
             if (row == null)
-            {
                 continue;
-            }
 
-            processedBatch.AddRange(row);
+            values.AddRange(row);
         }
 
         lock (_lock)
         {
-            _historicalValues.AddRange(processedBatch);
+            _history.AddRange(values);
         }
 
-        return processedBatch;
+        return values;
     }
 
+    // Adds a collection of readings together.
     public SensorReading Aggregate(IEnumerable<double> values)
     {
         SensorReading total = new(0);
 
-        foreach (double value in values)
+        foreach (var value in values)
         {
             total += new SensorReading(value);
         }
@@ -100,21 +110,24 @@ public class TelemetryService
         return total;
     }
 
+    // Calculates the difference between two readings.
     public SensorReading CalculateDelta(double previous, double current)
     {
         return new SensorReading(current) - new SensorReading(previous);
     }
 
+    // Checks whether a reading is above the given threshold.
     public bool ExceedsThreshold(double value, double threshold)
     {
         return new SensorReading(value) > new SensorReading(threshold);
     }
 
+    // Returns a copy of all historical sensor values.
     public IReadOnlyList<double> GetHistoricalValues()
     {
         lock (_lock)
         {
-            return _historicalValues.ToList();
+            return _history.ToList();
         }
     }
 }

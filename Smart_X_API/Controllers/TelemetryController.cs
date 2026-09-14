@@ -15,23 +15,26 @@ public class TelemetryController : ControllerBase
         _telemetryService = telemetryService;
     }
 
+    // Receives temperature readings from a sensor.
     [HttpPost("temperature")]
-    public IActionResult ReceiveTemperature([FromBody] TelemetryPacket<float> packet)
+    public IActionResult ReceiveTemperature(
+        [FromBody] TelemetryPacket<float> packet)
     {
         if (string.IsNullOrWhiteSpace(packet.DeviceId))
-        {
             return BadRequest("Device ID is required.");
-        }
 
         if (packet.Value < -50 || packet.Value > 100)
-        {
             return BadRequest("Invalid temperature value.");
-        }
 
-        DateTime timestamp = packet.Timestamp == default ? DateTime.UtcNow : packet.Timestamp;
+        var timestamp = packet.Timestamp == default
+            ? DateTime.UtcNow
+            : packet.Timestamp;
 
-        SensorReadingRecord reading = _telemetryService.AddReading(
-            packet.DeviceId, packet.SensorCategory, packet.Value, timestamp);
+        var reading = _telemetryService.AddReading(
+            packet.DeviceId,
+            packet.SensorCategory,
+            packet.Value,
+            timestamp);
 
         return Ok(new
         {
@@ -43,23 +46,26 @@ public class TelemetryController : ControllerBase
         });
     }
 
+    // Receives power consumption readings from a sensor.
     [HttpPost("power")]
-    public IActionResult ReceivePower([FromBody] TelemetryPacket<int> packet)
+    public IActionResult ReceivePower(
+        [FromBody] TelemetryPacket<int> packet)
     {
         if (string.IsNullOrWhiteSpace(packet.DeviceId))
-        {
             return BadRequest("Device ID is required.");
-        }
 
         if (packet.Value < 0)
-        {
             return BadRequest("Power value cannot be negative.");
-        }
 
-        DateTime timestamp = packet.Timestamp == default ? DateTime.UtcNow : packet.Timestamp;
+        var timestamp = packet.Timestamp == default
+            ? DateTime.UtcNow
+            : packet.Timestamp;
 
-        SensorReadingRecord reading = _telemetryService.AddReading(
-            packet.DeviceId, packet.SensorCategory, packet.Value, timestamp);
+        var reading = _telemetryService.AddReading(
+            packet.DeviceId,
+            packet.SensorCategory,
+            packet.Value,
+            timestamp);
 
         return Ok(new
         {
@@ -71,20 +77,25 @@ public class TelemetryController : ControllerBase
         });
     }
 
+    // Receives the state of switch.
     [HttpPost("switch")]
-    public IActionResult ReceiveSwitch([FromBody] TelemetryPacket<bool> packet)
+    public IActionResult ReceiveSwitch(
+        [FromBody] TelemetryPacket<bool> packet)
     {
         if (string.IsNullOrWhiteSpace(packet.DeviceId))
-        {
             return BadRequest("Device ID is required.");
-        }
 
-        DateTime timestamp = packet.Timestamp == default ? DateTime.UtcNow : packet.Timestamp;
+        var timestamp = packet.Timestamp == default
+            ? DateTime.UtcNow
+            : packet.Timestamp;
 
         double numericValue = packet.Value ? 1 : 0;
 
-        SensorReadingRecord reading = _telemetryService.AddReading(
-            packet.DeviceId, packet.SensorCategory, numericValue, timestamp);
+        var reading = _telemetryService.AddReading(
+            packet.DeviceId,
+            packet.SensorCategory,
+            numericValue,
+            timestamp);
 
         return Ok(new
         {
@@ -96,43 +107,40 @@ public class TelemetryController : ControllerBase
         });
     }
 
+    // Returns telemetry readings, optionally filtered by device.
     [HttpGet]
-    public IActionResult GetTelemetry([FromQuery] string? deviceId = null)
+    public IActionResult GetTelemetry(
+        [FromQuery] string? deviceId = null)
     {
         return Ok(_telemetryService.GetReadings(deviceId));
     }
 
+    // Returns the telemetry history for a device.
     [HttpGet("history/{deviceId}")]
     public IActionResult GetHistory(string deviceId)
     {
         if (string.IsNullOrWhiteSpace(deviceId))
-        {
             return BadRequest("Device ID is required.");
-        }
 
         return Ok(_telemetryService.GetReadings(deviceId));
     }
 
+    // Processes a twodimensional telemetry batch.
     [HttpPost("batch")]
-    public IActionResult ProcessBatch([FromBody] TelemetryBatch batch)
+    public IActionResult ProcessBatch(
+        [FromBody] TelemetryBatch batch)
     {
         if (string.IsNullOrWhiteSpace(batch.DeviceId))
-        {
             return BadRequest("Device ID is required.");
-        }
 
         if (string.IsNullOrWhiteSpace(batch.SensorCategory))
-        {
             return BadRequest("Sensor category is required.");
-        }
 
         if (batch.RawValues == null || batch.RawValues.Length == 0)
-        {
             return BadRequest("Telemetry batch cannot be empty.");
-        }
 
-        IReadOnlyList<double> processed = _telemetryService.ProcessRawBatch(batch.RawValues);
-        SensorReading aggregate = _telemetryService.Aggregate(processed);
+        var processed = _telemetryService.ProcessRawBatch(batch.RawValues);
+        var aggregate = _telemetryService.Aggregate(processed);
 
         return Ok(new
         {
@@ -145,16 +153,16 @@ public class TelemetryController : ControllerBase
         });
     }
 
+    // Processes a jagged telemetry batch.
     [HttpPost("jagged-batch")]
-    public IActionResult ProcessJaggedBatch([FromBody] double[][] batch)
+    public IActionResult ProcessJaggedBatch(
+        [FromBody] double[][] batch)
     {
         if (batch == null || batch.Length == 0)
-        {
             return BadRequest("Telemetry batch cannot be empty.");
-        }
 
-        IReadOnlyList<double> processed = _telemetryService.ProcessJaggedBatch(batch);
-        SensorReading aggregate = _telemetryService.Aggregate(processed);
+        var processed = _telemetryService.ProcessJaggedBatch(batch);
+        var aggregate = _telemetryService.Aggregate(processed);
 
         return Ok(new
         {
@@ -163,10 +171,15 @@ public class TelemetryController : ControllerBase
         });
     }
 
+    // Calculates the difference between two readings.
     [HttpGet("delta")]
-    public IActionResult GetDelta([FromQuery] double previous, [FromQuery] double current)
+    public IActionResult GetDelta(
+        [FromQuery] double previous,
+        [FromQuery] double current)
     {
-        SensorReading delta = _telemetryService.CalculateDelta(previous, current);
+        var delta = _telemetryService.CalculateDelta(
+            previous,
+            current);
 
         return Ok(new
         {
@@ -176,10 +189,15 @@ public class TelemetryController : ControllerBase
         });
     }
 
+    // Checks whether a reading is above a threshold.
     [HttpGet("threshold")]
-    public IActionResult CheckThreshold([FromQuery] double value, [FromQuery] double threshold)
+    public IActionResult CheckThreshold(
+        [FromQuery] double value,
+        [FromQuery] double threshold)
     {
-        bool exceeded = _telemetryService.ExceedsThreshold(value, threshold);
+        bool exceeded = _telemetryService.ExceedsThreshold(
+            value,
+            threshold);
 
         return Ok(new
         {

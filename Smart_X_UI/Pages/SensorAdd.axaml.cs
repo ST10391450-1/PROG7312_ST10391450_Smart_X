@@ -12,6 +12,8 @@ namespace Smart_X_UI.Pages;
 
 public partial class SensorAdd : UserControl
 {
+    #region Fields
+
     private readonly SensorService _sensorService =
         new(ApiClient.HttpClient);
 
@@ -23,9 +25,16 @@ public partial class SensorAdd : UserControl
             @"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$",
             RegexOptions.Compiled);
 
-    public event EventHandler<SensorRegistration>? SensorRegistered;
+    #endregion
 
+    #region Events
+
+    public event EventHandler<SensorRegistration>? SensorRegistered;
     public event EventHandler? BackRequested;
+
+    #endregion
+
+    #region Constructor
 
     public SensorAdd()
     {
@@ -34,12 +43,16 @@ public partial class SensorAdd : UserControl
         _ = LoadLocationsAsync();
     }
 
+    #endregion
+
+    #region Locations
+
+    // Loads the available deployment locations.
     private async Task LoadLocationsAsync()
     {
         try
         {
-            var locations =
-                await _locationService.GetLocationsAsync();
+            var locations = await _locationService.GetLocationsAsync();
 
             LocationComboBox.ItemsSource = locations;
         }
@@ -49,14 +62,17 @@ public partial class SensorAdd : UserControl
         }
     }
 
+    #endregion
+
+    #region Sensor Registration
+
+    // Validates and registers the sensor with the API.
     private async void RegisterSensorButton_Click(
         object? sender,
         RoutedEventArgs e)
     {
         if (!ValidateForm())
-        {
             return;
-        }
 
         RegisterSensorButton.IsEnabled = false;
 
@@ -79,14 +95,10 @@ public partial class SensorAdd : UserControl
             RegistrationStatusText.Text =
                 $"Sensor '{registeredSensor.NodeId}' registered successfully.";
 
-            RegistrationStatusText.Foreground =
-                Brushes.LimeGreen;
-
+            RegistrationStatusText.Foreground = Brushes.LimeGreen;
             RegistrationStatusText.IsVisible = true;
 
-            SensorRegistered?.Invoke(
-                this,
-                registeredSensor);
+            SensorRegistered?.Invoke(this, registeredSensor);
 
             ClearForm();
         }
@@ -95,19 +107,13 @@ public partial class SensorAdd : UserControl
             RegistrationStatusText.Text =
                 $"Could not connect to the Smart X API.\n\n{ex.Message}";
 
-            RegistrationStatusText.Foreground =
-                Brushes.OrangeRed;
-
+            RegistrationStatusText.Foreground = Brushes.OrangeRed;
             RegistrationStatusText.IsVisible = true;
         }
         catch (Exception ex)
         {
-            RegistrationStatusText.Text =
-                ex.Message;
-
-            RegistrationStatusText.Foreground =
-                Brushes.OrangeRed;
-
+            RegistrationStatusText.Text = ex.Message;
+            RegistrationStatusText.Foreground = Brushes.OrangeRed;
             RegistrationStatusText.IsVisible = true;
         }
         finally
@@ -116,18 +122,20 @@ public partial class SensorAdd : UserControl
         }
     }
 
+    #endregion
+
+    #region Validation
+
+    // Checks that all required sensor details are valid.
     private bool ValidateForm()
     {
-        bool valid = true;
+        var valid = true;
 
-        string mac =
-            MacAddressTextBox.Text?.Trim() ?? string.Empty;
+        var mac = MacAddressTextBox.Text?.Trim() ?? string.Empty;
 
         if (!MacAddressRegex.IsMatch(mac))
         {
-            MacAddressTextBox.BorderBrush =
-                Brushes.OrangeRed;
-
+            MacAddressTextBox.BorderBrush = Brushes.OrangeRed;
             MacAddressErrorText.IsVisible = true;
             valid = false;
         }
@@ -139,14 +147,11 @@ public partial class SensorAdd : UserControl
             MacAddressErrorText.IsVisible = false;
         }
 
-        string nodeId =
-            NodeIdTextBox.Text?.Trim() ?? string.Empty;
+        var nodeId = NodeIdTextBox.Text?.Trim() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(nodeId))
         {
-            NodeIdTextBox.BorderBrush =
-                Brushes.OrangeRed;
-
+            NodeIdTextBox.BorderBrush = Brushes.OrangeRed;
             NodeIdErrorText.IsVisible = true;
             valid = false;
         }
@@ -181,6 +186,7 @@ public partial class SensorAdd : UserControl
         return valid;
     }
 
+    // Shows validation errors while entering the MAC address.
     private void MacAddressTextBox_TextChanged(
         object? sender,
         TextChangedEventArgs e)
@@ -191,15 +197,20 @@ public partial class SensorAdd : UserControl
                 MacAddressTextBox.Text.Trim());
     }
 
+    // Shows a validation error when the node ID is empty.
     private void NodeIdTextBox_TextChanged(
         object? sender,
         TextChangedEventArgs e)
     {
         NodeIdErrorText.IsVisible =
-            string.IsNullOrWhiteSpace(
-                NodeIdTextBox.Text);
+            string.IsNullOrWhiteSpace(NodeIdTextBox.Text);
     }
 
+    #endregion
+
+    #region Form
+
+    // Clears the form when the user presses the Clear button.
     private void ClearButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -229,12 +240,17 @@ public partial class SensorAdd : UserControl
         RegistrationStatusText.Text = string.Empty;
     }
 
+    #endregion
+
+    #region Navigation
+
+    // Returns to the sensor dashboard.
     private void BackButton_Click(
         object? sender,
         RoutedEventArgs e)
     {
-        BackRequested?.Invoke(
-            this,
-            EventArgs.Empty);
+        BackRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    #endregion
 }

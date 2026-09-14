@@ -1,4 +1,6 @@
-﻿namespace Smart_X_API.Models;
+﻿// Telemetry Data from sensors
+
+namespace Smart_X_API.Models;
 
 public class TelemetryBatch
 {

@@ -1,6 +1,6 @@
 ﻿using Smart_X_UI.Models;
 using System;
-using System.Collections.Generic;
+ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -18,8 +18,8 @@ public class AttachmentService
         _httpClient = httpClient;
     }
 
-    public async Task<List<SensorAttachment>> GetAttachmentsAsync(
-        string nodeId)
+    // Gets all attachments for a sensor.
+    public async Task<List<SensorAttachment>> GetAttachmentsAsync(string nodeId)
     {
         var endpoint =
             $"api/Sensors/{Uri.EscapeDataString(nodeId)}/attachments";
@@ -28,14 +28,11 @@ public class AttachmentService
             endpoint) ?? new List<SensorAttachment>();
     }
 
-    public async Task UploadAttachmentAsync(
-        string nodeId,
-        string filePath)
+    // Uploads an attachment for a sensor.
+    public async Task UploadAttachmentAsync(string nodeId, string filePath)
     {
         await using var stream = File.OpenRead(filePath);
-
         using var content = new MultipartFormDataContent();
-
         using var fileContent = new StreamContent(stream);
 
         fileContent.Headers.ContentType =
@@ -49,12 +46,12 @@ public class AttachmentService
         var endpoint =
             $"api/Sensors/{Uri.EscapeDataString(nodeId)}/attachments";
 
-        using HttpResponseMessage response =
-            await _httpClient.PostAsync(endpoint, content);
+        using var response = await _httpClient.PostAsync(endpoint, content);
 
         response.EnsureSuccessStatusCode();
     }
 
+    // Downloads an attachment and returns it as a memory stream.
     public async Task<Stream> DownloadAttachmentAsync(
         string nodeId,
         Guid attachmentId)
@@ -62,15 +59,13 @@ public class AttachmentService
         var endpoint =
             $"api/Sensors/" +
             $"{Uri.EscapeDataString(nodeId)}/attachments/" +
-            $"{Uri.EscapeDataString(attachmentId.ToString())}";
+            $"{attachmentId}";
 
-        using HttpResponseMessage response =
-            await _httpClient.GetAsync(endpoint);
+        using var response = await _httpClient.GetAsync(endpoint);
 
         response.EnsureSuccessStatusCode();
 
-        await using var stream =
-            await response.Content.ReadAsStreamAsync();
+        await using var stream = await response.Content.ReadAsStreamAsync();
 
         var memoryStream = new MemoryStream();
 
@@ -81,6 +76,7 @@ public class AttachmentService
         return memoryStream;
     }
 
+    // Deletes an attachment from the sensor.
     public async Task DeleteAttachmentAsync(
         string nodeId,
         Guid attachmentId)
@@ -88,10 +84,9 @@ public class AttachmentService
         var endpoint =
             $"api/Sensors/" +
             $"{Uri.EscapeDataString(nodeId)}/attachments/" +
-            $"{Uri.EscapeDataString(attachmentId.ToString())}";
+            $"{attachmentId}";
 
-        using HttpResponseMessage response =
-            await _httpClient.DeleteAsync(endpoint);
+        using var response = await _httpClient.DeleteAsync(endpoint);
 
         response.EnsureSuccessStatusCode();
     }
