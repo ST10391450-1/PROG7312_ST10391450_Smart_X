@@ -652,3 +652,6 @@ This project demonstrates practical use of:
 * Client-server architecture
 * Git and GitHub
 
+__________________________________________________
+
+Readme Generated with Assistance from ChatGPT | By providing link to GitHub then asking it to create a Readme.md
