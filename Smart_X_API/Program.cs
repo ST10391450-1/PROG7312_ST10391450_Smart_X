@@ -12,10 +12,6 @@ builder.Services.AddSingleton<LocationValidationService>();
 
 var app = builder.Build();
 
-TestDataService.Seed(
-    SensorsController.Sensors,
-    app.Services.GetRequiredService<LocationService>());
-
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

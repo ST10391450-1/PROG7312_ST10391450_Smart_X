@@ -807,12 +807,14 @@
                                 Margin="0,0,0,10">
 
                                 <Grid
-                                    RowDefinitions="Auto,Auto"
+                                    RowDefinitions="Auto,Auto,Auto"
                                     ColumnDefinitions="*,Auto"
                                     RowSpacing="13"
                                     ColumnSpacing="10">
 
-                                    <!-- Device -->
+                                    <!-- ================================================= -->
+                                    <!-- DEVICE / STATUS -->
+                                    <!-- ================================================= -->
 
                                     <StackPanel
                                         Grid.Row="0"
@@ -858,7 +860,9 @@
                                     </StackPanel>
 
 
-                                    <!-- Status / Details -->
+                                    <!-- ================================================= -->
+                                    <!-- STATUS / DETAILS -->
+                                    <!-- ================================================= -->
 
                                     <StackPanel
                                         Grid.Row="0"
@@ -870,14 +874,14 @@
                                         <Ellipse
                                             Width="7"
                                             Height="7"
-                                            Fill="#39D98A"
+                                            Fill="{Binding StatusColor}"
                                             VerticalAlignment="Center"/>
 
                                         <TextBlock
-                                            Text="ACTIVE"
+                                            Text="{Binding StatusText}"
                                             FontSize="10"
                                             FontWeight="SemiBold"
-                                            Foreground="#39D98A"
+                                            Foreground="{Binding StatusColor}"
                                             VerticalAlignment="Center"/>
 
                                         <Button
@@ -890,10 +894,62 @@
                                     </StackPanel>
 
 
-                                    <!-- Location -->
+                                    <!-- ================================================= -->
+                                    <!-- CURRENT DATA -->
+                                    <!-- ================================================= -->
+
+                                    <Border
+                                        Grid.Row="1"
+                                        Grid.Column="0"
+                                        Grid.ColumnSpan="2"
+                                        Background="#101F2D"
+                                        BorderBrush="#233B50"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="12">
+
+                                        <Grid
+                                            ColumnDefinitions="*,Auto"
+                                            ColumnSpacing="10">
+
+                                            <StackPanel
+                                                Grid.Column="0"
+                                                Spacing="4"
+                                                VerticalAlignment="Center">
+
+                                                <TextBlock
+                                                    Text="CURRENT DATA"
+                                                    FontSize="9"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="#637C8F"/>
+
+                                                <TextBlock
+                                                    Text="{Binding CurrentDataText}"
+                                                    FontSize="18"
+                                                    FontWeight="Bold"
+                                                    Foreground="#F1F6FA"
+                                                    TextTrimming="CharacterEllipsis"/>
+
+                                            </StackPanel>
+
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                Text="{Binding CurrentDataTimestampText}"
+                                                FontSize="9"
+                                                Foreground="#637C8F"
+                                                VerticalAlignment="Center"/>
+
+                                        </Grid>
+
+                                    </Border>
+
+
+                                    <!-- ================================================= -->
+                                    <!-- LOCATION -->
+                                    <!-- ================================================= -->
 
                                     <StackPanel
-                                        Grid.Row="1"
+                                        Grid.Row="2"
                                         Grid.Column="0"
                                         Spacing="3">
 
@@ -912,10 +968,12 @@
                                     </StackPanel>
 
 
-                                    <!-- Category -->
+                                    <!-- ================================================= -->
+                                    <!-- CATEGORY -->
+                                    <!-- ================================================= -->
 
                                     <StackPanel
-                                        Grid.Row="1"
+                                        Grid.Row="2"
                                         Grid.Column="1"
                                         Spacing="3">
 

@@ -1,14 +1,19 @@
-﻿using Avalonia.Controls;
+﻿using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
+using Avalonia.Threading;
 using Smart_X_UI.Models;
 using Smart_X_UI.Services;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
-using System.Text.Json;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
 
 namespace Smart_X_UI.Pages;
@@ -20,13 +25,20 @@ public partial class SensorDetails : UserControl
     private readonly AttachmentService _attachmentService =
         new(ApiClient.HttpClient);
 
-    private readonly TelemetryService _telemetryService =
-        new(ApiClient.HttpClient);
-
     private readonly ObservableCollection<SensorAttachment> _attachments =
         new();
 
+    private readonly DispatcherTimer _telemetryTimer;
+
+    private bool _loadingTelemetry;
+
     public event EventHandler? BackRequested;
+
+    // Required by Avalonia XAML runtime loader.
+    public SensorDetails()
+        : this(new SensorRegistration())
+    {
+    }
 
     public SensorDetails(SensorRegistration sensor)
     {
@@ -36,29 +48,351 @@ public partial class SensorDetails : UserControl
 
         AttachmentsItemsControl.ItemsSource = _attachments;
 
+        _telemetryTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2)
+        };
+
+        _telemetryTimer.Tick += TelemetryTimer_Tick;
+
         LoadSensorDetails();
+
         _ = LoadAttachmentsAsync();
+        _ = LoadCurrentTelemetryAsync();
+
+        _telemetryTimer.Start();
     }
 
     private void LoadSensorDetails()
     {
         HeaderNodeIdText.Text = _sensor.NodeId;
+
         NodeIdText.Text = _sensor.NodeId;
         MacAddressText.Text = _sensor.MacAddress;
         CategoryText.Text = _sensor.Category;
         LocationText.Text = _sensor.Location;
-        StatusText.Text = "ACTIVE";
-        EndpointText.Text = TelemetryService.GetEndpoint(_sensor);
+
+        UpdateConnectionStatus(
+            "WAITING",
+            Brushes.Orange,
+            CreateBrush(255, 58, 48, 32),
+            CreateBrush(255, 102, 85, 43));
+
+        EndpointText.Text =
+            TelemetryService.GetEndpoint(_sensor);
+
+        TelemetryStatusText.Text = "WAITING";
+        TelemetryStatusText.Foreground =
+            Brushes.Orange;
+
+        TelemetryValueText.Text = "N/A";
+        TelemetryTimestampText.Text = "N/A";
+    }
+
+    private async void TelemetryTimer_Tick(
+        object? sender,
+        EventArgs e)
+    {
+        await LoadCurrentTelemetryAsync();
+    }
+
+    private async Task LoadCurrentTelemetryAsync()
+    {
+        if (_loadingTelemetry)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_sensor.MacAddress))
+        {
+            SetNoTelemetryState(
+                "No MAC address configured.");
+
+            return;
+        }
+
+        _loadingTelemetry = true;
+
+        try
+        {
+            string deviceId =
+                Uri.EscapeDataString(
+                    _sensor.MacAddress);
+
+            using HttpResponseMessage response =
+                await ApiClient.HttpClient.GetAsync(
+                    $"api/Telemetry?deviceId={deviceId}");
+
+            response.EnsureSuccessStatusCode();
+
+            var readings =
+                await response.Content
+                    .ReadFromJsonAsync<
+                        List<SensorReadingRecord>>();
+
+            if (readings == null ||
+                readings.Count == 0)
+            {
+                SetNoTelemetryState(
+                    "Waiting for telemetry...");
+
+                return;
+            }
+
+            SensorReadingRecord? latestReading =
+                readings
+                    .OrderByDescending(
+                        reading =>
+                            DateTimeService.EnsureUtc(
+                                reading.Timestamp))
+                    .FirstOrDefault();
+
+            if (latestReading == null)
+            {
+                SetNoTelemetryState(
+                    "Waiting for telemetry...");
+
+                return;
+            }
+
+            DisplayTelemetry(latestReading);
+        }
+        catch (HttpRequestException)
+        {
+            SetConnectionErrorState(
+                "DISCONNECTED");
+        }
+        catch (TaskCanceledException)
+        {
+            SetConnectionErrorState(
+                "TIMEOUT");
+        }
+        catch (Exception ex)
+        {
+            SetConnectionErrorState(
+                "ERROR");
+
+            ShowActionStatus(
+                $"Could not retrieve telemetry: {ex.Message}",
+                false);
+        }
+        finally
+        {
+            _loadingTelemetry = false;
+        }
+    }
+
+    private void DisplayTelemetry(
+        SensorReadingRecord reading)
+    {
+        bool isCurrent =
+            DateTimeService.IsRecent(
+                reading.Timestamp);
+
+        if (isCurrent)
+        {
+            UpdateConnectionStatus(
+                "ACTIVE",
+                Brushes.LimeGreen,
+                CreateBrush(
+                    255,
+                    35,
+                    75,
+                    45),
+                CreateBrush(
+                    255,
+                    50,
+                    105,
+                    65));
+
+            TelemetryStatusText.Text =
+                "RECEIVED";
+
+            TelemetryStatusText.Foreground =
+                Brushes.LimeGreen;
+        }
+        else
+        {
+            UpdateConnectionStatus(
+                "INACTIVE",
+                Brushes.Orange,
+                CreateBrush(
+                    255,
+                    58,
+                    48,
+                    32),
+                CreateBrush(
+                    255,
+                    102,
+                    85,
+                    43));
+
+            TelemetryStatusText.Text =
+                "STALE";
+
+            TelemetryStatusText.Foreground =
+                Brushes.Orange;
+        }
+
+        TelemetryValueText.Text =
+            FormatTelemetryValue(
+                reading.Value,
+                reading.SensorCategory);
+
+        TelemetryTimestampText.Text =
+            DateTimeService
+                .EnsureUtc(reading.Timestamp)
+                .ToLocalTime()
+                .ToString(
+                    "yyyy-MM-dd HH:mm:ss");
+    }
+
+    private void SetNoTelemetryState(
+        string message)
+    {
+        UpdateConnectionStatus(
+            "INACTIVE",
+            Brushes.Orange,
+            CreateBrush(
+                255,
+                58,
+                48,
+                32),
+            CreateBrush(
+                255,
+                102,
+                85,
+                43));
+
+        TelemetryStatusText.Text =
+            "NO DATA";
+
+        TelemetryStatusText.Foreground =
+            Brushes.Orange;
+
+        TelemetryValueText.Text =
+            "N/A";
+
+        TelemetryTimestampText.Text =
+            "N/A";
+
+        ShowActionStatus(
+            message,
+            false);
+    }
+
+    private void SetConnectionErrorState(
+        string status)
+    {
+        UpdateConnectionStatus(
+            status,
+            Brushes.OrangeRed,
+            CreateBrush(
+                255,
+                70,
+                32,
+                32),
+            CreateBrush(
+                255,
+                120,
+                55,
+                55));
+
+        TelemetryStatusText.Text =
+            status;
+
+        TelemetryStatusText.Foreground =
+            Brushes.OrangeRed;
+    }
+
+    private void UpdateConnectionStatus(
+        string status,
+        IBrush foreground,
+        IBrush background,
+        IBrush border)
+    {
+        StatusText.Text =
+            status;
+
+        StatusText.Foreground =
+            foreground;
+
+        ConnectionStatusBadgeText.Text =
+            status;
+
+        ConnectionStatusBadgeText.Foreground =
+            foreground;
+
+        ConnectionStatusIndicator.Fill =
+            foreground;
+
+        ConnectionStatusBadge.Background =
+            background;
+
+        ConnectionStatusBadge.BorderBrush =
+            border;
+    }
+
+    private static IBrush CreateBrush(
+        byte alpha,
+        byte red,
+        byte green,
+        byte blue)
+    {
+        return new SolidColorBrush(
+            Color.FromArgb(
+                alpha,
+                red,
+                green,
+                blue));
+    }
+
+    private static string FormatTelemetryValue(
+        double value,
+        string category)
+    {
+        if (string.Equals(
+                category,
+                "Environmental",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{value:F1} °C";
+        }
+
+        if (string.Equals(
+                category,
+                "Power Consumption",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{value:F0} W";
+        }
+
+        if (string.Equals(
+                category,
+                "Actuator",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return value >= 0.5
+                ? "ON"
+                : "OFF";
+        }
+
+        return value % 1 == 0
+            ? value.ToString("F0")
+            : value.ToString("F2");
     }
 
     private async Task LoadAttachmentsAsync()
     {
         try
         {
-            AttachmentsStatusText.IsVisible = false;
+            AttachmentsStatusText.IsVisible =
+                false;
 
             var attachments =
-                await _attachmentService.GetAttachmentsAsync(_sensor.NodeId);
+                await _attachmentService
+                    .GetAttachmentsAsync(
+                        _sensor.NodeId);
 
             _attachments.Clear();
 
@@ -69,26 +403,36 @@ public partial class SensorDetails : UserControl
 
             if (_attachments.Count == 0)
             {
-                AttachmentsStatusText.Text = "No attachments found.";
-                AttachmentsStatusText.IsVisible = true;
+                AttachmentsStatusText.Text =
+                    "No attachments found.";
+
+                AttachmentsStatusText.IsVisible =
+                    true;
             }
         }
         catch (HttpRequestException)
         {
             AttachmentsStatusText.Text =
                 "Could not connect to the Smart X API.";
-            AttachmentsStatusText.IsVisible = true;
+
+            AttachmentsStatusText.IsVisible =
+                true;
         }
         catch (TaskCanceledException)
         {
             AttachmentsStatusText.Text =
                 "The attachment request timed out.";
-            AttachmentsStatusText.IsVisible = true;
+
+            AttachmentsStatusText.IsVisible =
+                true;
         }
         catch (Exception ex)
         {
-            AttachmentsStatusText.Text = ex.Message;
-            AttachmentsStatusText.IsVisible = true;
+            AttachmentsStatusText.Text =
+                ex.Message;
+
+            AttachmentsStatusText.IsVisible =
+                true;
         }
     }
 
@@ -103,39 +447,47 @@ public partial class SensorDetails : UserControl
         object? sender,
         RoutedEventArgs e)
     {
-        if (TopLevel.GetTopLevel(this) is not TopLevel topLevel)
+        if (TopLevel.GetTopLevel(this)
+            is not TopLevel topLevel)
         {
             return;
         }
 
         var files =
-            await topLevel.StorageProvider.OpenFilePickerAsync(
-                new FilePickerOpenOptions
-                {
-                    Title = "Select attachment",
-                    AllowMultiple = false
-                });
+            await topLevel.StorageProvider
+                .OpenFilePickerAsync(
+                    new FilePickerOpenOptions
+                    {
+                        Title =
+                            "Select attachment",
+
+                        AllowMultiple =
+                            false
+                    });
 
         if (files.Count == 0)
         {
             return;
         }
 
-        string? path = files[0].TryGetLocalPath();
+        string? path =
+            files[0].TryGetLocalPath();
 
         if (string.IsNullOrWhiteSpace(path))
         {
             ShowActionStatus(
                 "The selected file could not be accessed.",
                 false);
+
             return;
         }
 
         try
         {
-            await _attachmentService.UploadAttachmentAsync(
-                _sensor.NodeId,
-                path);
+            await _attachmentService
+                .UploadAttachmentAsync(
+                    _sensor.NodeId,
+                    path);
 
             ShowActionStatus(
                 "Attachment uploaded successfully.",
@@ -157,7 +509,9 @@ public partial class SensorDetails : UserControl
         }
         catch (Exception ex)
         {
-            ShowActionStatus(ex.Message, false);
+            ShowActionStatus(
+                ex.Message,
+                false);
         }
     }
 
@@ -171,45 +525,54 @@ public partial class SensorDetails : UserControl
             return;
         }
 
-        if (TopLevel.GetTopLevel(this) is not TopLevel topLevel)
+        if (TopLevel.GetTopLevel(this)
+            is not TopLevel topLevel)
         {
             return;
         }
 
         var file =
-            await topLevel.StorageProvider.SaveFilePickerAsync(
-                new FilePickerSaveOptions
-                {
-                    Title = "Save attachment",
-                    SuggestedFileName = attachment.FileName
-                });
+            await topLevel.StorageProvider
+                .SaveFilePickerAsync(
+                    new FilePickerSaveOptions
+                    {
+                        Title =
+                            "Save attachment",
+
+                        SuggestedFileName =
+                            attachment.FileName
+                    });
 
         if (file is null)
         {
             return;
         }
 
-        string? path = file.TryGetLocalPath();
+        string? path =
+            file.TryGetLocalPath();
 
         if (string.IsNullOrWhiteSpace(path))
         {
             ShowActionStatus(
                 "The destination file could not be accessed.",
                 false);
+
             return;
         }
 
         try
         {
             await using Stream source =
-                await _attachmentService.DownloadAttachmentAsync(
-                    _sensor.NodeId,
-                    attachment.Id);
+                await _attachmentService
+                    .DownloadAttachmentAsync(
+                        _sensor.NodeId,
+                        attachment.Id);
 
             await using FileStream destination =
                 File.Create(path);
 
-            await source.CopyToAsync(destination);
+            await source.CopyToAsync(
+                destination);
 
             ShowActionStatus(
                 "Attachment downloaded successfully.",
@@ -229,7 +592,9 @@ public partial class SensorDetails : UserControl
         }
         catch (Exception ex)
         {
-            ShowActionStatus(ex.Message, false);
+            ShowActionStatus(
+                ex.Message,
+                false);
         }
     }
 
@@ -245,11 +610,13 @@ public partial class SensorDetails : UserControl
 
         try
         {
-            await _attachmentService.DeleteAttachmentAsync(
-                _sensor.NodeId,
-                attachment.Id);
+            await _attachmentService
+                .DeleteAttachmentAsync(
+                    _sensor.NodeId,
+                    attachment.Id);
 
-            _attachments.Remove(attachment);
+            _attachments.Remove(
+                attachment);
 
             ShowActionStatus(
                 "Attachment deleted successfully.",
@@ -260,7 +627,8 @@ public partial class SensorDetails : UserControl
                 AttachmentsStatusText.Text =
                     "No attachments found.";
 
-                AttachmentsStatusText.IsVisible = true;
+                AttachmentsStatusText.IsVisible =
+                    true;
             }
         }
         catch (HttpRequestException)
@@ -277,152 +645,44 @@ public partial class SensorDetails : UserControl
         }
         catch (Exception ex)
         {
-            ShowActionStatus(ex.Message, false);
-        }
-    }
-
-    private async void SimulateTelemetryButton_Click(
-        object? sender,
-        RoutedEventArgs e)
-    {
-        SimulateTelemetryButton.IsEnabled = false;
-
-        try
-        {
-            using HttpResponseMessage response =
-                await _telemetryService.SendTelemetryAsync(_sensor);
-
-            string responseBody =
-                await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                TelemetryStatusText.Text = "REJECTED";
-                TelemetryStatusText.Foreground = Brushes.OrangeRed;
-
-                ShowActionStatus(
-                    $"Telemetry rejected: HTTP {(int)response.StatusCode}\n{responseBody}",
-                    false);
-
-                return;
-            }
-
-            TelemetryStatusText.Text = "RECEIVED";
-            TelemetryStatusText.Foreground = Brushes.LimeGreen;
-            TelemetryValueText.Text = GetTelemetryValue(responseBody);
-            TelemetryTimestampText.Text = GetTelemetryTimestamp(responseBody);
-
             ShowActionStatus(
-                "Telemetry sent successfully.",
-                true);
-        }
-        catch (HttpRequestException)
-        {
-            TelemetryStatusText.Text = "DISCONNECTED";
-            TelemetryStatusText.Foreground = Brushes.OrangeRed;
-
-            ShowActionStatus(
-                "Could not connect to the Smart X API.",
+                ex.Message,
                 false);
         }
-        catch (TaskCanceledException)
-        {
-            TelemetryStatusText.Text = "TIMEOUT";
-            TelemetryStatusText.Foreground = Brushes.OrangeRed;
-
-            ShowActionStatus(
-                "The telemetry request timed out.",
-                false);
-        }
-        catch (Exception ex)
-        {
-            TelemetryStatusText.Text = "ERROR";
-            TelemetryStatusText.Foreground = Brushes.OrangeRed;
-
-            ShowActionStatus(ex.Message, false);
-        }
-        finally
-        {
-            SimulateTelemetryButton.IsEnabled = true;
-        }
-    }
-
-    private static string GetTelemetryValue(string response)
-    {
-        if (string.IsNullOrWhiteSpace(response))
-        {
-            return "N/A";
-        }
-
-        try
-        {
-            using JsonDocument document =
-                JsonDocument.Parse(response);
-
-            if (document.RootElement.TryGetProperty(
-                    "value",
-                    out JsonElement value))
-            {
-                return value.ValueKind switch
-                {
-                    JsonValueKind.True => "ON",
-                    JsonValueKind.False => "OFF",
-                    _ => value.ToString()
-                };
-            }
-        }
-        catch (JsonException)
-        {
-        }
-
-        return response;
-    }
-
-    private static string GetTelemetryTimestamp(string response)
-    {
-        try
-        {
-            using JsonDocument document =
-                JsonDocument.Parse(response);
-
-            if (document.RootElement.TryGetProperty(
-                    "timestamp",
-                    out JsonElement timestamp) &&
-                timestamp.ValueKind == JsonValueKind.String &&
-                DateTime.TryParse(
-                    timestamp.GetString(),
-                    out DateTime parsed))
-            {
-                return parsed
-                    .ToLocalTime()
-                    .ToString("yyyy-MM-dd HH:mm:ss");
-            }
-        }
-        catch (JsonException)
-        {
-        }
-
-        return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
     }
 
     private void ShowActionStatus(
         string message,
         bool success)
     {
-        ActionStatusText.Text = message;
+        ActionStatusText.Text =
+            message;
 
         ActionStatusText.Foreground =
             success
                 ? Brushes.LimeGreen
                 : Brushes.OrangeRed;
 
-        ActionStatusText.IsVisible = true;
+        ActionStatusText.IsVisible =
+            true;
     }
 
     private void BackButton_Click(
         object? sender,
         RoutedEventArgs e)
     {
-        BackRequested?.Invoke(this, EventArgs.Empty);
+        _telemetryTimer.Stop();
+
+        BackRequested?.Invoke(
+            this,
+            EventArgs.Empty);
+    }
+
+    protected override void OnDetachedFromVisualTree(
+        VisualTreeAttachmentEventArgs e)
+    {
+        _telemetryTimer.Stop();
+
+        base.OnDetachedFromVisualTree(e);
     }
 }
