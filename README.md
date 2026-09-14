@@ -9,8 +9,8 @@ The project is made up of three main components:
 - **`Smart_X_Simulator.py`** — A Python script that simulates sensor telemetry and sends it to the API.
 
 - Start Application by downloading, extracting then running 
-# dotnet RUN.cs# 
-in terminal under appropriate directory 
+- **`dotnet RUN.cs`**
+- in terminal under appropriate directory 
 
 ## Features
 
