@@ -14,6 +14,12 @@ builder.Services.AddSingleton<LocationService>();
 builder.Services.AddSingleton<LocationValidationService>();
 builder.Services.AddScoped<CommandStreamService>();
 
+builder.Services.AddSingleton<DeviceLookupService>();
+builder.Services.AddSingleton<TelemetryQueueService>();
+builder.Services.AddSingleton<AlertTrackingService>();
+builder.Services.AddSingleton<CommandHistoryService>();
+builder.Services.AddSingleton<PredictiveActionService>();
+
 
 var app = builder.Build();
 

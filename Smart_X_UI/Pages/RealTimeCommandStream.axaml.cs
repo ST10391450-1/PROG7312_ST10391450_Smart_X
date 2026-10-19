@@ -164,6 +164,7 @@ public partial class RealTimeCommandStream : UserControl
             ApplyHistoryFilters();
     }
 
+
     private async Task LoadDataAsync()
     {
         if (_isLoading)
@@ -173,20 +174,60 @@ public partial class RealTimeCommandStream : UserControl
 
         try
         {
-            ConnectionStatusText.Text = "Connecting to API...";
+            ConnectionStatusText.Text = "Loading sensors...";
             ConnectionStatusText.Foreground = BrushFrom("#D6A84F");
 
             var sensors = await _sensorService.GetSensorsAsync();
 
-            var readings = await ApiClient.HttpClient
-                .GetFromJsonAsync<List<SensorReadingRecord>>(
-                    "api/Telemetry",
-                    JsonOptions) ?? new List<SensorReadingRecord>();
+            _allDevices.Clear();
 
-            var commands = await ApiClient.HttpClient
-                .GetFromJsonAsync<List<CommandRecord>>(
-                    "api/Commands",
-                    JsonOptions) ?? new List<CommandRecord>();
+            foreach (var sensor in sensors)
+            {
+                if (string.IsNullOrWhiteSpace(sensor.NodeId))
+                    continue;
+
+                var state = sensor.IsActive ? "Active" : "Disabled";
+
+                _allDevices.Add(
+                    BuildDeviceRow(sensor, null, state, null));
+            }
+
+            RefreshFilterOptions();
+            ApplyDeviceFilters();
+            UpdateSummaryCounters();
+
+            DeviceMessageText.IsVisible = false;
+
+            List<SensorReadingRecord> readings = new();
+            List<CommandRecord> commands = new();
+
+            try
+            {
+                readings = await ApiClient.HttpClient
+                    .GetFromJsonAsync<List<SensorReadingRecord>>(
+                        "api/Telemetry",
+                        JsonOptions) ?? new List<SensorReadingRecord>();
+            }
+            catch (Exception ex)
+            {
+                DeviceMessageText.Text =
+                    $"Sensors loaded, but telemetry failed: {ex.Message}";
+                DeviceMessageText.IsVisible = true;
+            }
+
+            try
+            {
+                commands = await ApiClient.HttpClient
+                    .GetFromJsonAsync<List<CommandRecord>>(
+                        "api/Commands",
+                        JsonOptions) ?? new List<CommandRecord>();
+            }
+            catch (Exception ex)
+            {
+                HistoryMessageText.Text =
+                    $"Command history failed: {ex.Message}";
+                HistoryMessageText.IsVisible = true;
+            }
 
             var states = new Dictionary<string, SimulatedDeviceState>(
                 StringComparer.OrdinalIgnoreCase);
@@ -198,8 +239,8 @@ public partial class RealTimeCommandStream : UserControl
 
                 try
                 {
-                    var simulatedState = await GetSimulatedDeviceStateAsync(
-                        sensor.NodeId);
+                    var simulatedState =
+                        await GetSimulatedDeviceStateAsync(sensor.NodeId);
 
                     if (simulatedState != null)
                     {
@@ -282,11 +323,8 @@ public partial class RealTimeCommandStream : UserControl
             UpdateSummaryCounters();
 
             ConnectionStatusText.Text =
-                $"Connected · Updated {DateTime.Now:HH:mm:ss}";
+                $"Connected · {_allDevices.Count} devices · Updated {DateTime.Now:HH:mm:ss}";
             ConnectionStatusText.Foreground = BrushFrom("#6EE7B7");
-
-            DeviceMessageText.IsVisible = false;
-            HistoryMessageText.IsVisible = false;
         }
         catch (Exception ex)
         {
