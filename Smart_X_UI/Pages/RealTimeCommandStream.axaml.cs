@@ -1,1071 +1,1042 @@
-﻿
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
-using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
-using Smart_X_UI.Models;
 using Smart_X_UI.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net.Http.Json;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace Smart_X_UI.Pages;
 
 public partial class RealTimeCommandStream : UserControl
 {
-    private readonly SensorService _sensorService;
-    private readonly CommandStreamService _commandService;
-    private readonly DispatcherTimer _refreshTimer;
+    private readonly ObservableCollection<string> _recommendations = new();
+    private readonly ObservableCollection<string> _alerts = new();
+    private readonly ObservableCollection<string> _disconnected = new();
+    private readonly ObservableCollection<DeviceRow> _devices = new();
+    private readonly ObservableCollection<DeviceRow> _filteredDevices = new();
+    private readonly ObservableCollection<HistoryRow> _history = new();
+    private readonly ObservableCollection<HistoryRow> _filteredHistory = new();
 
-    private readonly ObservableCollection<DeviceRow> _allDevices = new();
-    private readonly ObservableCollection<DeviceRow> _visibleDevices = new();
-    private readonly ObservableCollection<HistoryRow> _allHistory = new();
-    private readonly ObservableCollection<HistoryRow> _visibleHistory = new();
-
-    private readonly ObservableCollection<string> _deviceCategories = new()
+    private readonly DispatcherTimer _refreshTimer = new()
     {
-        "All categories"
-    };
-
-    private readonly ObservableCollection<string> _deviceStates = new()
-    {
-        "All states",
-        "Active",
-        "Disabled",
-        "Alert"
-    };
-
-    private readonly ObservableCollection<string> _historyCategories = new()
-    {
-        "All categories"
+        Interval = TimeSpan.FromSeconds(3)
     };
 
     private bool _isLoading;
-    private bool _isSendingCommand;
-    private bool _isAttached;
-    private bool _filtersInitialized;
-    private bool _deviceMessageIsError;
-
-    private string? _deviceError;
-    private string? _historyError;
-    private string? _deviceSuccess;
-    private string? _historySuccess;
-
-    private static readonly JsonSerializerOptions JsonOptions =
-        new(JsonSerializerDefaults.Web)
-        {
-            PropertyNameCaseInsensitive = true
-        };
+    private bool _isFiltering;
+    private bool _categoriesLoaded;
 
     public RealTimeCommandStream()
     {
         InitializeComponent();
 
-        _sensorService = new SensorService(ApiClient.HttpClient);
-        _commandService = new CommandStreamService(ApiClient.HttpClient);
+        RecommendationsList.ItemsSource = _recommendations;
+        AlertsList.ItemsSource = _alerts;
+        DisconnectedList.ItemsSource = _disconnected;
+        DevicesItemsControl.ItemsSource = _filteredDevices;
+        HistoryItemsControl.ItemsSource = _filteredHistory;
 
-        DevicesItemsControl.ItemsSource = _visibleDevices;
-        HistoryItemsControl.ItemsSource = _visibleHistory;
+        _refreshTimer.Tick += RefreshTimer_Tick;
+        AttachedToVisualTree += OnAttachedToVisualTree;
+        DetachedFromVisualTree += OnDetachedFromVisualTree;
 
-        DeviceCategoryFilterComboBox.ItemsSource = _deviceCategories;
-        DeviceStateFilterComboBox.ItemsSource = _deviceStates;
-        HistoryCategoryFilterComboBox.ItemsSource = _historyCategories;
-
-        _filtersInitialized = true;
+        DeviceCategoryFilterComboBox.Items.Add(new ComboBoxItem { Content = "All Categories" });
+        DeviceStateFilterComboBox.Items.Add(new ComboBoxItem { Content = "All States" });
+        HistoryCategoryFilterComboBox.Items.Add(new ComboBoxItem { Content = "All Categories" });
 
         DeviceCategoryFilterComboBox.SelectedIndex = 0;
         DeviceStateFilterComboBox.SelectedIndex = 0;
         HistoryCategoryFilterComboBox.SelectedIndex = 0;
-
-        _refreshTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(3)
-        };
-
-        _refreshTimer.Tick += RefreshTimer_Tick;
-
-        AttachedToVisualTree += OnAttachedToVisualTree;
-        DetachedFromVisualTree += OnDetachedFromVisualTree;
-
-        ApplyDeviceFilters();
-        ApplyHistoryFilters();
     }
 
-    private void OnAttachedToVisualTree(
-        object? sender,
-        VisualTreeAttachmentEventArgs e)
+    private async void OnAttachedToVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
-        if (_isAttached)
-            return;
-
-        _isAttached = true;
         _refreshTimer.Start();
-
-        _ = LoadDataAsync();
+        await LoadInsightsAsync();
     }
 
-    private void OnDetachedFromVisualTree(
-        object? sender,
-        VisualTreeAttachmentEventArgs e)
+    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
-        _isAttached = false;
         _refreshTimer.Stop();
     }
 
     private async void RefreshTimer_Tick(object? sender, EventArgs e)
     {
-        await LoadDataAsync();
+        if (!_isLoading)
+            await LoadInsightsAsync();
     }
 
-    private async void RefreshButton_Click(object? sender, RoutedEventArgs e)
-    {
-        await LoadDataAsync();
-    }
-
-    private void BackButton_Click(object? sender, RoutedEventArgs e)
-    {
-        _refreshTimer.Stop();
-        _isAttached = false;
-
-        if (TopLevel.GetTopLevel(this) is Smart_X_UI.MainWindow mainWindow)
-            mainWindow.ShowHome();
-    }
-
-    private void DeviceSearchTextBox_TextChanged(
-        object? sender,
-        TextChangedEventArgs e)
-    {
-        ApplyDeviceFilters();
-    }
-
-    private void CommandHistorySearchTextBox_TextChanged(
-        object? sender,
-        TextChangedEventArgs e)
-    {
-        ApplyHistoryFilters();
-    }
-
-    private void DeviceFilter_Changed(
-        object? sender,
-        SelectionChangedEventArgs e)
-    {
-        if (_filtersInitialized)
-            ApplyDeviceFilters();
-    }
-
-    private void HistoryFilter_Changed(
-        object? sender,
-        SelectionChangedEventArgs e)
-    {
-        if (_filtersInitialized)
-            ApplyHistoryFilters();
-    }
-
-    private async Task LoadDataAsync()
+    private async Task LoadInsightsAsync()
     {
         if (_isLoading)
             return;
 
         _isLoading = true;
+        ConnectionStatusText.Text = "Connecting to API...";
 
         try
         {
-            ConnectionStatusText.Text = "Loading sensors...";
-            ConnectionStatusText.Foreground = BrushFrom("#D6A84F");
+            await LoadDevicesAsync();
+            await LoadHistoryAsync();
+            await LoadRecommendationsAsync();
+            await LoadAlertsAsync();
+            await LoadDisconnectedAsync();
 
-            var sensors = await _sensorService.GetSensorsAsync();
+            RegisteredDevicesValue.Text = _devices.Count.ToString();
+            OnlineDevicesValue.Text = _devices.Count(x => x.IsEnabled).ToString();
 
-            _allDevices.Clear();
+            CommandsTodayValue.Text = _history.Count(x =>
+                DateTime.TryParse(x.CreatedAt, out var createdAt) &&
+                createdAt.Date == DateTime.Today).ToString();
 
-            foreach (var sensor in sensors)
-            {
-                if (string.IsNullOrWhiteSpace(sensor.NodeId))
-                    continue;
-
-                var state = sensor.IsActive ? "Active" : "Disabled";
-
-                _allDevices.Add(
-                    BuildDeviceRow(sensor, null, state, null));
-            }
-
-            RefreshFilterOptions();
-            ApplyDeviceFilters();
-            UpdateSummaryCounters();
-
-            List<SensorReadingRecord> readings = new();
-            List<CommandRecord> commands = new();
-
-            try
-            {
-                readings = await ApiClient.HttpClient
-                    .GetFromJsonAsync<List<SensorReadingRecord>>(
-                        "api/Telemetry",
-                        JsonOptions) ?? new List<SensorReadingRecord>();
-
-                if (_deviceError?.StartsWith(
-                        "Sensors loaded, but telemetry failed:",
-                        StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    ClearDeviceError();
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowDeviceError(
-                    $"Sensors loaded, but telemetry failed: {ex.Message}");
-            }
-
-            try
-            {
-                commands = await ApiClient.HttpClient
-                    .GetFromJsonAsync<List<CommandRecord>>(
-                        "api/Commands",
-                        JsonOptions) ?? new List<CommandRecord>();
-
-                if (_historyError?.StartsWith(
-                        "Command history failed:",
-                        StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    ClearHistoryError();
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowHistoryError(
-                    $"Command history failed: {ex.Message}");
-            }
-
-            var states = new Dictionary<string, SimulatedDeviceState>(
-                StringComparer.OrdinalIgnoreCase);
-
-            foreach (var sensor in sensors)
-            {
-                if (string.IsNullOrWhiteSpace(sensor.NodeId))
-                    continue;
-
-                try
-                {
-                    var simulatedState =
-                        await GetSimulatedDeviceStateAsync(sensor.NodeId);
-
-                    if (simulatedState != null)
-                    {
-                        states[sensor.NodeId] = simulatedState;
-                        sensor.IsActive = simulatedState.IsEnabled;
-                    }
-                }
-                catch
-                {
-                }
-            }
-
-            _allDevices.Clear();
-
-            foreach (var sensor in sensors)
-            {
-                if (string.IsNullOrWhiteSpace(sensor.NodeId))
-                    continue;
-
-                var reading = FindLatestReading(sensor, readings);
-
-                states.TryGetValue(sensor.NodeId, out var simulatedState);
-
-                var state = GetDeviceState(sensor, reading);
-
-                _allDevices.Add(
-                    BuildDeviceRow(sensor, reading, state, simulatedState));
-            }
-
-            var sensorLookup = new Dictionary<string, SensorRegistration>(
-                StringComparer.OrdinalIgnoreCase);
-
-            foreach (var sensor in sensors)
-            {
-                if (!string.IsNullOrWhiteSpace(sensor.NodeId))
-                    sensorLookup.TryAdd(sensor.NodeId.Trim(), sensor);
-
-                if (!string.IsNullOrWhiteSpace(sensor.MacAddress))
-                    sensorLookup.TryAdd(sensor.MacAddress.Trim(), sensor);
-            }
-
-            _allHistory.Clear();
-
-            foreach (var command in commands.OrderByDescending(x => x.CreatedAt))
-            {
-                var nodeId = command.NodeId ?? string.Empty;
-
-                sensorLookup.TryGetValue(nodeId.Trim(), out var sensor);
-
-                var category = sensor == null
-                    ? "Unknown"
-                    : GetCategory(sensor);
-
-                var result = string.IsNullOrWhiteSpace(command.Status)
-                    ? "Unknown"
-                    : command.Status;
-
-                _allHistory.Add(new HistoryRow
-                {
-                    Command = command.Command ?? "Unknown",
-                    NodeId = nodeId,
-                    Device = sensor == null
-                        ? nodeId
-                        : GetDisplayName(sensor),
-                    Category = category,
-                    Source = string.IsNullOrWhiteSpace(command.Result)
-                        ? "API command"
-                        : command.Result,
-                    Result = result,
-                    Time = command.CreatedAt == default
-                        ? "Timestamp unavailable"
-                        : FormatTimestamp(command.CreatedAt),
-                    ResultForeground = GetResultForeground(result)
-                });
-            }
-
-            RefreshFilterOptions();
-            ApplyDeviceFilters();
-            ApplyHistoryFilters();
-            UpdateSummaryCounters();
+            DeviceCountText.Text = $"{_filteredDevices.Count} devices";
 
             ConnectionStatusText.Text =
-                $"Connected · {_allDevices.Count} devices · Updated {DateTime.Now:HH:mm:ss}";
-            ConnectionStatusText.Foreground = BrushFrom("#6EE7B7");
+                $"API connected · {_devices.Count} devices · " +
+                $"{_history.Count} commands · Updated {DateTime.Now:HH:mm:ss}";
         }
         catch (Exception ex)
         {
-            ConnectionStatusText.Text = "API request failed";
-            ConnectionStatusText.Foreground = BrushFrom("#FDA4AF");
-
-            ShowDeviceError(ex.Message);
+            ConnectionStatusText.Text = $"API connection failed: {ex.Message}";
         }
         finally
         {
-            RestoreMessages();
             _isLoading = false;
         }
     }
 
-    private async Task<SimulatedDeviceState?> GetSimulatedDeviceStateAsync(
-        string nodeId)
+    private async Task LoadDevicesAsync()
     {
-        using var response = await ApiClient.HttpClient.GetAsync(
-            $"api/Commands/device/{Uri.EscapeDataString(nodeId)}/state");
-
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        return await response.Content
-            .ReadFromJsonAsync<SimulatedDeviceState>(JsonOptions);
-    }
-
-    private static SensorReadingRecord? FindLatestReading(
-        SensorRegistration sensor,
-        IEnumerable<SensorReadingRecord> readings)
-    {
-        var identifiers = new HashSet<string>(
-            StringComparer.OrdinalIgnoreCase);
-
-        AddIdentifier(identifiers, sensor.NodeId);
-        AddIdentifier(identifiers, sensor.MacAddress);
-
-        if (identifiers.Count == 0)
-            return null;
-
-        return readings
-            .Where(reading =>
-                reading != null &&
-                IsMatchingDevice(reading.DeviceId, identifiers))
-            .OrderByDescending(reading => GetTimestamp(reading.Timestamp))
-            .FirstOrDefault();
-    }
-
-    private static void AddIdentifier(
-        HashSet<string> identifiers,
-        string? identifier)
-    {
-        if (string.IsNullOrWhiteSpace(identifier))
-            return;
-
-        var trimmed = identifier.Trim();
-
-        identifiers.Add(trimmed);
-
-        var normalized = NormalizeDeviceIdentifier(trimmed);
-
-        if (!string.IsNullOrWhiteSpace(normalized))
-            identifiers.Add(normalized);
-    }
-
-    private static bool IsMatchingDevice(
-        string? deviceId,
-        HashSet<string> identifiers)
-    {
-        if (string.IsNullOrWhiteSpace(deviceId))
-            return false;
-
-        var trimmed = deviceId.Trim();
-
-        if (identifiers.Contains(trimmed))
-            return true;
-
-        var normalized = NormalizeDeviceIdentifier(trimmed);
-
-        return !string.IsNullOrWhiteSpace(normalized)
-            && identifiers.Contains(normalized);
-    }
-
-    private static string NormalizeDeviceIdentifier(string identifier)
-    {
-        return new string(
-            identifier
-                .Where(char.IsLetterOrDigit)
-                .Select(char.ToUpperInvariant)
-                .ToArray());
-    }
-
-    private static DateTime GetTimestamp(DateTime timestamp)
-    {
-        if (timestamp == default)
-            return DateTime.MinValue;
-
-        return timestamp.Kind == DateTimeKind.Unspecified
-            ? DateTime.SpecifyKind(timestamp, DateTimeKind.Utc)
-            : timestamp.ToUniversalTime();
-    }
-
-    private static DeviceRow BuildDeviceRow(
-        SensorRegistration sensor,
-        SensorReadingRecord? reading,
-        string state,
-        SimulatedDeviceState? simulatedState)
-    {
-        var unit = string.IsNullOrWhiteSpace(sensor.Unit)
-            ? GetUnit(sensor.Category)
-            : sensor.Unit;
-
-        var latestValue = reading == null
-            ? "No telemetry received"
-            : $"{reading.Value.ToString("G", CultureInfo.InvariantCulture)} {unit}".Trim();
-
-        if (simulatedState != null &&
-            (sensor.Category.Contains("pump", StringComparison.OrdinalIgnoreCase)
-             || sensor.Category.Contains("relay", StringComparison.OrdinalIgnoreCase)
-             || sensor.Category.Contains("switch", StringComparison.OrdinalIgnoreCase)))
+        try
         {
-            latestValue = simulatedState.OutputOn ? "ON" : "OFF";
+            using var response = await ApiClient.HttpClient.GetAsync("api/Sensors");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                DeviceMessageText.Text =
+                    $"Sensor request failed: HTTP {(int)response.StatusCode}";
+                DeviceMessageText.IsVisible = true;
+                return;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var root = JsonNode.Parse(json);
+            var items = GetArray(root, "sensors", "items", "data", "results", "value");
+
+            if (items == null)
+            {
+                DeviceMessageText.Text =
+                    "The sensor API returned an unrecognised JSON format.";
+                DeviceMessageText.IsVisible = true;
+                return;
+            }
+
+            _devices.Clear();
+
+            foreach (var item in items)
+            {
+                if (item is not JsonObject sensor)
+                    continue;
+
+                var nodeId = ReadString(sensor, "nodeId", "NodeId");
+                var macAddress = ReadString(sensor, "macAddress", "MacAddress");
+                var category = ReadString(sensor, "category", "Category");
+                var location = ReadString(sensor, "location", "Location");
+
+                var hasEnabledValue =
+                    sensor.ContainsKey("isEnabled") ||
+                    sensor.ContainsKey("IsEnabled");
+
+                var isEnabled = ReadBool(sensor, "isEnabled", "IsEnabled");
+
+                var displayName = !string.IsNullOrWhiteSpace(nodeId)
+                    ? nodeId
+                    : !string.IsNullOrWhiteSpace(macAddress)
+                        ? macAddress
+                        : "Unnamed device";
+
+                var state = !hasEnabledValue
+                    ? "Status unavailable"
+                    : isEnabled ? "Enabled" : "Disabled";
+
+                _devices.Add(new DeviceRow
+                {
+                    NodeId = nodeId,
+                    DisplayName = displayName,
+                    MacAddress = macAddress,
+                    Category = string.IsNullOrWhiteSpace(category) ? "Uncategorised" : category,
+                    Location = string.IsNullOrWhiteSpace(location) ? "No location" : location,
+                    IsEnabled = hasEnabledValue && isEnabled,
+                    StateText = state,
+                    StateBackground = !hasEnabledValue
+                        ? "#183044"
+                        : isEnabled ? "#183D2B" : "#40252B",
+                    StateForeground = !hasEnabledValue
+                        ? "#DCE7ED"
+                        : isEnabled ? "#8BF0B0" : "#FF9CA5",
+                    LatestValue = "No telemetry available",
+                    LatestTimestamp = "No reading recorded",
+                    EnableDisableLabel = !hasEnabledValue
+                        ? "Status unavailable"
+                        : isEnabled ? "Disable" : "Enable"
+                });
+            }
+
+            DeviceMessageText.IsVisible = false;
+
+            UpdateCategoryFilters();
+            ApplyDeviceFilters();
+
+            DeviceEmptyText.Text = _devices.Count == 0
+                ? "No registered devices found."
+                : "No devices match your search or filters.";
+
+            DeviceEmptyText.IsVisible = _filteredDevices.Count == 0;
+            DevicesItemsControl.IsVisible = _filteredDevices.Count > 0;
+            DeviceCountText.Text = $"{_filteredDevices.Count} devices";
+        }
+        catch (JsonException)
+        {
+            DeviceMessageText.Text = "The sensor API returned invalid JSON.";
+            DeviceMessageText.IsVisible = true;
+        }
+        catch (HttpRequestException ex)
+        {
+            DeviceMessageText.Text = $"Could not reach the sensor API: {ex.Message}";
+            DeviceMessageText.IsVisible = true;
+        }
+        catch (TaskCanceledException)
+        {
+            DeviceMessageText.Text = "The sensor API request timed out.";
+            DeviceMessageText.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            DeviceMessageText.Text = $"Could not load sensors: {ex.Message}";
+            DeviceMessageText.IsVisible = true;
+        }
+    }
+
+    private void UpdateCategoryFilters()
+    {
+        var selectedDeviceCategory = GetSelectedText(DeviceCategoryFilterComboBox);
+        var selectedState = GetSelectedText(DeviceStateFilterComboBox);
+        var selectedHistoryCategory = GetSelectedText(HistoryCategoryFilterComboBox);
+
+        DeviceCategoryFilterComboBox.Items.Clear();
+        DeviceStateFilterComboBox.Items.Clear();
+        HistoryCategoryFilterComboBox.Items.Clear();
+
+        DeviceCategoryFilterComboBox.Items.Add(new ComboBoxItem { Content = "All Categories" });
+        DeviceStateFilterComboBox.Items.Add(new ComboBoxItem { Content = "All States" });
+        HistoryCategoryFilterComboBox.Items.Add(new ComboBoxItem { Content = "All Categories" });
+
+        foreach (var category in _devices
+                     .Select(x => x.Category)
+                     .Where(x => !string.IsNullOrWhiteSpace(x))
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(x => x))
+        {
+            DeviceCategoryFilterComboBox.Items.Add(new ComboBoxItem { Content = category });
+            HistoryCategoryFilterComboBox.Items.Add(new ComboBoxItem { Content = category });
         }
 
-        return new DeviceRow
+        foreach (var state in _devices
+                     .Select(x => x.StateText)
+                     .Where(x => !string.IsNullOrWhiteSpace(x))
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(x => x))
         {
-            DisplayName = GetDisplayName(sensor),
-            NodeId = sensor.NodeId,
-            Category = GetCategory(sensor),
-            Location = GetLocation(sensor),
-            LatestValue = latestValue,
-            LatestTimestamp = reading == null
-                ? simulatedState == null
-                    ? "Waiting for first reading"
-                    : "Simulated device state"
-                : reading.Timestamp == default
-                    ? "Timestamp unavailable"
-                    : FormatTimestamp(reading.Timestamp),
-            StateText = state,
-            StateBackground = GetStateBackground(state),
-            StateForeground = GetStateForeground(state),
-            EnableDisableLabel = sensor.IsActive
-                ? "Disable Sensor"
-                : "Enable Sensor",
-            IsActive = sensor.IsActive,
-            HasAlert = state == "Alert",
-            OutputOn = simulatedState?.OutputOn ?? false
-        };
+            DeviceStateFilterComboBox.Items.Add(new ComboBoxItem { Content = state });
+        }
+
+        SelectComboItem(DeviceCategoryFilterComboBox, selectedDeviceCategory);
+        SelectComboItem(DeviceStateFilterComboBox, selectedState);
+        SelectComboItem(HistoryCategoryFilterComboBox, selectedHistoryCategory);
+
+        if (DeviceCategoryFilterComboBox.SelectedItem == null)
+            DeviceCategoryFilterComboBox.SelectedIndex = 0;
+
+        if (DeviceStateFilterComboBox.SelectedItem == null)
+            DeviceStateFilterComboBox.SelectedIndex = 0;
+
+        if (HistoryCategoryFilterComboBox.SelectedItem == null)
+            HistoryCategoryFilterComboBox.SelectedIndex = 0;
+
+        _categoriesLoaded = true;
     }
 
-    private static string GetDeviceState(
-        SensorRegistration sensor,
-        SensorReadingRecord? reading)
+    private static void SelectComboItem(ComboBox comboBox, string value)
     {
-        if (reading != null)
+        for (var i = 0; i < comboBox.Items.Count; i++)
         {
-            var category = reading.SensorCategory ?? string.Empty;
-
-            if (category.Contains("alert", StringComparison.OrdinalIgnoreCase)
-                || category.Contains("fault", StringComparison.OrdinalIgnoreCase)
-                || category.Contains("error", StringComparison.OrdinalIgnoreCase))
+            if (comboBox.Items[i] is ComboBoxItem item &&
+                string.Equals(item.Content?.ToString(), value, StringComparison.OrdinalIgnoreCase))
             {
-                return "Alert";
+                comboBox.SelectedIndex = i;
+                return;
             }
         }
-
-        return sensor.IsActive ? "Active" : "Disabled";
     }
 
-    private static string GetUnit(string category)
+    private async Task LoadHistoryAsync()
     {
-        if (category.Contains("temperature", StringComparison.OrdinalIgnoreCase))
-            return "°C";
+        try
+        {
+            using var response = await ApiClient.HttpClient.GetAsync("api/Commands");
 
-        if (category.Contains("humidity", StringComparison.OrdinalIgnoreCase))
-            return "%RH";
+            if (!response.IsSuccessStatusCode)
+            {
+                HistoryMessageText.Text =
+                    $"Command history request failed: HTTP {(int)response.StatusCode}";
+                HistoryMessageText.IsVisible = true;
+                return;
+            }
 
-        if (category.Contains("power", StringComparison.OrdinalIgnoreCase))
-            return "W";
+            var json = await response.Content.ReadAsStringAsync();
+            var root = JsonNode.Parse(json);
+            var items = GetArray(root, "commands", "items", "data", "results", "value");
 
-        if (category.Contains("pressure", StringComparison.OrdinalIgnoreCase))
-            return "hPa";
+            if (items == null)
+            {
+                HistoryMessageText.Text =
+                    "Command history response format was not recognised.";
+                HistoryMessageText.IsVisible = true;
+                return;
+            }
 
-        if (category.Contains("light", StringComparison.OrdinalIgnoreCase))
-            return "lx";
+            _history.Clear();
 
-        if (category.Contains("voltage", StringComparison.OrdinalIgnoreCase))
-            return "V";
+            foreach (var item in items)
+            {
+                if (item is not JsonObject command)
+                    continue;
 
-        if (category.Contains("current", StringComparison.OrdinalIgnoreCase))
-            return "A";
+                var nodeId = ReadString(command, "nodeId", "NodeId");
+                var category = ReadString(command, "category", "Category");
 
-        if (category.Contains("relay", StringComparison.OrdinalIgnoreCase)
-            || category.Contains("switch", StringComparison.OrdinalIgnoreCase))
-            return "state";
+                if (string.IsNullOrWhiteSpace(category))
+                {
+                    category = _devices.FirstOrDefault(
+                        x => string.Equals(x.NodeId, nodeId, StringComparison.OrdinalIgnoreCase))
+                        ?.Category ?? "Unknown";
+                }
+
+                var status = ReadString(command, "status", "Status");
+                var result = ReadString(command, "result", "Result");
+                var commandName = ReadString(command, "command", "Command");
+                var createdAt = ReadString(command, "createdAt", "CreatedAt");
+
+                _history.Add(new HistoryRow
+                {
+                    Command = string.IsNullOrWhiteSpace(commandName) ? "Unknown command" : commandName,
+                    NodeId = nodeId,
+                    Category = category,
+                    Result = !string.IsNullOrWhiteSpace(result) ? result : status,
+                    CreatedAt = FormatTimestamp(createdAt)
+                });
+            }
+
+            var sortedHistory = _history
+                .OrderByDescending(x =>
+                    DateTime.TryParse(x.CreatedAt, out var timestamp)
+                        ? timestamp
+                        : DateTime.MinValue)
+                .ToList();
+
+            _history.Clear();
+
+            foreach (var row in sortedHistory)
+                _history.Add(row);
+
+            HistoryMessageText.IsVisible = false;
+            ApplyHistoryFilters();
+
+            HistoryEmptyText.Text = _history.Count == 0
+                ? "No command history available. Commands will appear here when recorded by the API."
+                : "No commands match your search or category filter.";
+
+            HistoryEmptyText.IsVisible = _filteredHistory.Count == 0;
+            HistoryItemsControl.IsVisible = _filteredHistory.Count > 0;
+        }
+        catch (JsonException)
+        {
+            HistoryMessageText.Text = "The command history API returned invalid JSON.";
+            HistoryMessageText.IsVisible = true;
+        }
+        catch (HttpRequestException ex)
+        {
+            HistoryMessageText.Text = $"Could not reach command history: {ex.Message}";
+            HistoryMessageText.IsVisible = true;
+        }
+        catch (TaskCanceledException)
+        {
+            HistoryMessageText.Text = "The command history request timed out.";
+            HistoryMessageText.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            HistoryMessageText.Text = $"Could not load command history: {ex.Message}";
+            HistoryMessageText.IsVisible = true;
+        }
+    }
+
+    private static string FormatTimestamp(string value)
+    {
+        if (DateTimeOffset.TryParse(value, out var timestamp))
+            return timestamp.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss");
+
+        return value;
+    }
+
+    private async Task LoadRecommendationsAsync()
+    {
+        RecommendationsStatus.Text = "Loading recommendations...";
+
+        try
+        {
+            using var response = await ApiClient.HttpClient.GetAsync("api/Insights/recommendations");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                RecommendationsStatus.Text = $"Request failed: {(int)response.StatusCode}";
+                return;
+            }
+
+            ReplaceItems(_recommendations, await response.Content.ReadAsStringAsync());
+
+            RecommendationsStatus.Text = _recommendations.Count == 0
+                ? "No recommendations available."
+                : $"{_recommendations.Count} recommendation(s) loaded.";
+        }
+        catch (Exception ex)
+        {
+            RecommendationsStatus.Text = $"Could not load recommendations: {ex.Message}";
+        }
+    }
+
+    private async Task LoadAlertsAsync()
+    {
+        AlertsStatus.Text = "Loading active alerts...";
+
+        try
+        {
+            using var response = await ApiClient.HttpClient.GetAsync("api/Insights/alerts");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                AlertsStatus.Text = $"Request failed: {(int)response.StatusCode}";
+                return;
+            }
+
+            ReplaceItems(_alerts, await response.Content.ReadAsStringAsync());
+
+            AlertsCount.Text = _alerts.Count.ToString();
+            ActiveAlertsValue.Text = _alerts.Count.ToString();
+
+            AlertsStatus.Text = _alerts.Count == 0
+                ? "No active alerts."
+                : $"{_alerts.Count} active alert(s).";
+        }
+        catch (Exception ex)
+        {
+            AlertsStatus.Text = $"Could not load alerts: {ex.Message}";
+        }
+    }
+
+    private async Task LoadDisconnectedAsync()
+    {
+        DisconnectedStatus.Text = "Loading disconnected devices...";
+
+        try
+        {
+            using var response = await ApiClient.HttpClient.GetAsync("api/Insights/disconnected");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                DisconnectedStatus.Text = $"Request failed: {(int)response.StatusCode}";
+                return;
+            }
+
+            ReplaceItems(_disconnected, await response.Content.ReadAsStringAsync());
+
+            DisconnectedCount.Text = _disconnected.Count.ToString();
+
+            DisconnectedStatus.Text = _disconnected.Count == 0
+                ? "No disconnected devices reported."
+                : $"{_disconnected.Count} disconnected device(s).";
+        }
+        catch (Exception ex)
+        {
+            DisconnectedStatus.Text = $"Could not load disconnected devices: {ex.Message}";
+        }
+    }
+
+    private async Task SearchInsightsAsync()
+    {
+        var query = InsightsSearchTextBox.Text?.Trim();
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            InsightsSearchStatus.Text = "Enter a search query.";
+            return;
+        }
+
+        InsightsSearchButton.IsEnabled = false;
+        InsightsSearchStatus.Text = "Submitting search...";
+
+        try
+        {
+            var payload = JsonSerializer.Serialize(new { query });
+
+            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            using var response = await ApiClient.HttpClient.PostAsync("api/Insights/search", content);
+
+            var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                InsightsSearchStatus.Text =
+                    $"Search failed ({(int)response.StatusCode}): {responseBody}";
+                return;
+            }
+
+            var message = "Search recorded successfully.";
+
+            try
+            {
+                var result = JsonNode.Parse(responseBody);
+                message = result?["message"]?.ToString() ?? message;
+            }
+            catch (JsonException)
+            {
+                if (!string.IsNullOrWhiteSpace(responseBody))
+                    message = responseBody;
+            }
+
+            InsightsSearchStatus.Text = $"{message} Query: {query}";
+            await LoadRecommendationsAsync();
+        }
+        catch (Exception ex)
+        {
+            InsightsSearchStatus.Text = $"Could not submit search: {ex.Message}";
+        }
+        finally
+        {
+            InsightsSearchButton.IsEnabled = true;
+        }
+    }
+
+    private static JsonArray? GetArray(JsonNode? root, params string[] propertyNames)
+    {
+        if (root is JsonArray array)
+            return array;
+
+        if (root is not JsonObject obj)
+            return null;
+
+        foreach (var propertyName in propertyNames)
+        {
+            if (obj.TryGetPropertyValue(propertyName, out var value) &&
+                value is JsonArray result)
+                return result;
+        }
+
+        return null;
+    }
+
+    private static string ReadString(JsonObject obj, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (obj.TryGetPropertyValue(name, out var value) && value != null)
+                return value.ToString();
+        }
 
         return string.Empty;
     }
 
-    private static string FormatTimestamp(DateTime timestamp)
+    private static bool ReadBool(JsonObject obj, params string[] names)
     {
-        return timestamp.Kind == DateTimeKind.Unspecified
-            ? timestamp.ToString("yyyy-MM-dd HH:mm:ss")
-            : timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
-    }
-
-    private static string GetDisplayName(SensorRegistration sensor) =>
-        string.IsNullOrWhiteSpace(sensor.Location)
-            ? sensor.NodeId
-            : sensor.Location;
-
-    private static string GetCategory(SensorRegistration sensor) =>
-        string.IsNullOrWhiteSpace(sensor.Category)
-            ? "Uncategorised"
-            : sensor.Category;
-
-    private static string GetLocation(SensorRegistration sensor) =>
-        string.IsNullOrWhiteSpace(sensor.Location)
-            ? "Location not specified"
-            : sensor.Location;
-
-    private static SolidColorBrush BrushFrom(string hex) =>
-        new(Color.Parse(hex));
-
-    private static IBrush GetStateBackground(string state) =>
-        BrushFrom(state switch
+        foreach (var name in names)
         {
-            "Active" => "#163D32",
-            "Alert" => "#4A2028",
-            _ => "#303B46"
-        });
+            if (obj.TryGetPropertyValue(name, out var value) &&
+                value != null &&
+                bool.TryParse(value.ToString(), out var result))
+                return result;
+        }
 
-    private static IBrush GetStateForeground(string state) =>
-        BrushFrom(state switch
-        {
-            "Active" => "#6EE7B7",
-            "Alert" => "#FDA4AF",
-            _ => "#CBD5E1"
-        });
-
-    private static IBrush GetResultForeground(string result)
-    {
-        if (result.Contains("success", StringComparison.OrdinalIgnoreCase)
-            || result.Contains("completed", StringComparison.OrdinalIgnoreCase))
-            return BrushFrom("#6EE7B7");
-
-        if (result.Contains("fail", StringComparison.OrdinalIgnoreCase)
-            || result.Contains("error", StringComparison.OrdinalIgnoreCase)
-            || result.Contains("rejected", StringComparison.OrdinalIgnoreCase))
-            return BrushFrom("#FDA4AF");
-
-        return BrushFrom("#CBD5E1");
+        return false;
     }
 
-    private void RefreshFilterOptions()
-    {
-        var selectedDeviceCategory =
-            DeviceCategoryFilterComboBox.SelectedItem as string;
-
-        var selectedDeviceState =
-            DeviceStateFilterComboBox.SelectedItem as string;
-
-        var selectedHistoryCategory =
-            HistoryCategoryFilterComboBox.SelectedItem as string;
-
-        ReplaceOptions(
-            _deviceCategories,
-            new[] { "All categories" }.Concat(
-                _allDevices.Select(x => x.Category)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(x => x)));
-
-        ReplaceOptions(
-            _historyCategories,
-            new[] { "All categories" }.Concat(
-                _allHistory.Select(x => x.Category)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(x => x)));
-
-        DeviceCategoryFilterComboBox.SelectedItem =
-            selectedDeviceCategory != null &&
-            _deviceCategories.Contains(selectedDeviceCategory)
-                ? selectedDeviceCategory
-                : "All categories";
-
-        DeviceStateFilterComboBox.SelectedItem =
-            selectedDeviceState != null &&
-            _deviceStates.Contains(selectedDeviceState)
-                ? selectedDeviceState
-                : "All states";
-
-        HistoryCategoryFilterComboBox.SelectedItem =
-            selectedHistoryCategory != null &&
-            _historyCategories.Contains(selectedHistoryCategory)
-                ? selectedHistoryCategory
-                : "All categories";
-    }
-
-    private static void ReplaceOptions(
-        ObservableCollection<string> target,
-        IEnumerable<string> values)
+    private static void ReplaceItems(ObservableCollection<string> target, string json)
     {
         target.Clear();
 
-        foreach (var value in values)
-            target.Add(value);
+        if (string.IsNullOrWhiteSpace(json))
+            return;
+
+        JsonNode? root;
+
+        try
+        {
+            root = JsonNode.Parse(json);
+        }
+        catch (JsonException)
+        {
+            target.Add(json);
+            return;
+        }
+
+        if (root is JsonArray array)
+        {
+            foreach (var item in array)
+            {
+                if (item != null)
+                    target.Add(FormatItem(item));
+            }
+
+            return;
+        }
+
+        if (root is JsonObject obj)
+        {
+            foreach (var property in obj)
+            {
+                if (property.Value is JsonArray nestedArray)
+                {
+                    foreach (var item in nestedArray)
+                    {
+                        if (item != null)
+                            target.Add(FormatItem(item));
+                    }
+                }
+                else if (property.Value is not JsonObject && property.Value != null)
+                {
+                    target.Add($"{property.Key}: {FormatValue(property.Value)}");
+                }
+            }
+
+            return;
+        }
+
+        if (root != null)
+            target.Add(FormatItem(root));
     }
 
-    private void UpdateSummaryCounters()
+    private static string FormatItem(JsonNode item)
     {
-        RegisteredDevicesValue.Text = _allDevices.Count.ToString();
+        if (item is JsonObject obj)
+        {
+            var parts = new List<string>();
 
-        OnlineDevicesValue.Text = _allDevices
-            .Count(device => device.StateText == "Active")
-            .ToString();
+            foreach (var property in obj)
+            {
+                if (property.Value is JsonObject or JsonArray)
+                    continue;
 
-        ActiveAlertsValue.Text = _allDevices
-            .Count(device => device.StateText == "Alert")
-            .ToString();
+                parts.Add($"{property.Key}: {FormatValue(property.Value)}");
+            }
 
-        CommandsTodayValue.Text = _allHistory
-            .Count(entry =>
-                DateTime.TryParse(
-                    entry.Time,
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var time) &&
-                time.Date == DateTime.Now.Date)
-            .ToString();
+            return parts.Count > 0 ? string.Join(" | ", parts) : obj.ToJsonString();
+        }
+
+        return FormatValue(item);
+    }
+
+    private static string FormatValue(JsonNode? value)
+    {
+        if (value == null)
+            return "—";
+
+        return value is JsonValue ? value.ToString() : value.ToJsonString();
+    }
+
+    private async void InsightsSearchButton_Click(object? sender, RoutedEventArgs e)
+        => await SearchInsightsAsync();
+
+    private async void InsightsSearchTextBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+            return;
+
+        e.Handled = true;
+        await SearchInsightsAsync();
+    }
+
+    private async void RefreshInsightsButton_Click(object? sender, RoutedEventArgs e)
+        => await LoadInsightsAsync();
+
+    private async void RefreshButton_Click(object? sender, RoutedEventArgs e)
+        => await LoadInsightsAsync();
+
+    private void BackButton_Click(object? sender, RoutedEventArgs e)
+    {
+        _refreshTimer.Stop();
+
+        if (TopLevel.GetTopLevel(this) is MainWindow mainWindow)
+            mainWindow.ShowHome();
+    }
+
+    private void DeviceSearchTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+        => ApplyDeviceFilters();
+
+    private void DeviceFilter_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_categoriesLoaded)
+            ApplyDeviceFilters();
     }
 
     private void ApplyDeviceFilters()
     {
-        var search = DeviceSearchTextBox.Text?.Trim() ?? string.Empty;
+        if (_isFiltering)
+            return;
 
-        var category = DeviceCategoryFilterComboBox.SelectedItem as string
-            ?? "All categories";
+        _isFiltering = true;
 
-        var state = DeviceStateFilterComboBox.SelectedItem as string
-            ?? "All states";
+        try
+        {
+            _filteredDevices.Clear();
 
-        var filtered = _allDevices.Where(device =>
-            (string.IsNullOrWhiteSpace(search)
-                || device.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || device.NodeId.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || device.Location.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || device.Category.Contains(search, StringComparison.OrdinalIgnoreCase))
-            && (category == "All categories"
-                || string.Equals(device.Category, category, StringComparison.OrdinalIgnoreCase))
-            && (state == "All states"
-                || string.Equals(device.StateText, state, StringComparison.OrdinalIgnoreCase)));
+            var search = DeviceSearchTextBox.Text?.Trim() ?? string.Empty;
+            var category = GetSelectedText(DeviceCategoryFilterComboBox);
+            var state = GetSelectedText(DeviceStateFilterComboBox);
 
-        _visibleDevices.Clear();
+            foreach (var device in _devices)
+            {
+                var matchesSearch =
+                    string.IsNullOrWhiteSpace(search) ||
+                    device.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    device.NodeId.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    device.MacAddress.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    device.Category.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    device.Location.Contains(search, StringComparison.OrdinalIgnoreCase);
 
-        foreach (var device in filtered)
-            _visibleDevices.Add(device);
+                var matchesCategory =
+                    IsAllFilter(category) ||
+                    device.Category.Equals(category, StringComparison.OrdinalIgnoreCase);
 
-        DeviceCountText.Text = $"{_visibleDevices.Count} devices";
-        DeviceEmptyText.Text = _allDevices.Count == 0
-            ? "No registered devices found."
-            : "No devices match the selected filters.";
+                var matchesState =
+                    IsAllFilter(state) ||
+                    device.StateText.Equals(state, StringComparison.OrdinalIgnoreCase);
 
-        DeviceEmptyText.IsVisible = _visibleDevices.Count == 0;
-        DevicesItemsControl.IsVisible = _visibleDevices.Count > 0;
+                if (matchesSearch && matchesCategory && matchesState)
+                    _filteredDevices.Add(device);
+            }
+        }
+        finally
+        {
+            _isFiltering = false;
+        }
+
+        DeviceCountText.Text = $"{_filteredDevices.Count} devices";
+        DeviceEmptyText.IsVisible = _filteredDevices.Count == 0;
+        DevicesItemsControl.IsVisible = _filteredDevices.Count > 0;
+
+        if (_filteredDevices.Count == 0)
+        {
+            DeviceEmptyText.Text = _devices.Count == 0
+                ? "No registered devices found."
+                : "No devices match your search or filters.";
+        }
+    }
+
+    private async void DeviceOverride_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control control || control.DataContext is not DeviceRow device)
+        {
+            ConnectionStatusText.Text = "Could not identify the selected device.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(device.NodeId))
+        {
+            ConnectionStatusText.Text = "The selected device has no Node ID.";
+            return;
+        }
+
+        if (!device.IsEnabled)
+        {
+            ConnectionStatusText.Text = "Enable the device before using manual override.";
+            return;
+        }
+
+        if (!device.Category.Contains("actuator", StringComparison.OrdinalIgnoreCase) &&
+            !device.Category.Contains("relay", StringComparison.OrdinalIgnoreCase) &&
+            !device.Category.Contains("pump", StringComparison.OrdinalIgnoreCase))
+        {
+            ConnectionStatusText.Text =
+                $"Manual override is not supported for category '{device.Category}'.";
+            return;
+        }
+
+        await SendCommandAsync(device, "ManualOverride");
+    }
+
+    private async void DeviceEnableDisable_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control control || control.DataContext is not DeviceRow device)
+        {
+            ConnectionStatusText.Text = "Could not identify the selected device.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(device.NodeId))
+        {
+            ConnectionStatusText.Text = "The selected device has no Node ID.";
+            return;
+        }
+
+        if (device.StateText == "Status unavailable")
+        {
+            ConnectionStatusText.Text =
+                "Cannot change this device because its enabled status is unavailable.";
+            return;
+        }
+
+        var command = device.IsEnabled ? "DisableSensor" : "EnableSensor";
+
+        await SendCommandAsync(device, command);
+    }
+
+    private async Task SendCommandAsync(DeviceRow device, string command)
+    {
+        try
+        {
+            ConnectionStatusText.Text = $"Sending {command} to {device.NodeId}...";
+
+            var payload = JsonSerializer.Serialize(new
+            {
+                NodeId = device.NodeId,
+                Command = command
+            });
+
+            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            using var response = await ApiClient.HttpClient.PostAsync("api/Commands", content);
+
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ConnectionStatusText.Text =
+                    $"Command failed: HTTP {(int)response.StatusCode}. {body}";
+                return;
+            }
+
+            var message = "Command accepted by the API.";
+
+            if (!string.IsNullOrWhiteSpace(body))
+            {
+                try
+                {
+                    var result = JsonNode.Parse(body);
+                    var status = result?["status"]?.ToString() ?? result?["Status"]?.ToString();
+                    var resultText = result?["result"]?.ToString() ?? result?["Result"]?.ToString();
+
+                    if (!string.IsNullOrWhiteSpace(status))
+                        message = status;
+
+                    if (!string.IsNullOrWhiteSpace(resultText))
+                        message += $": {resultText}";
+                }
+                catch (JsonException)
+                {
+                    message += $" Response: {body}";
+                }
+            }
+
+            await LoadDevicesAsync();
+            await LoadHistoryAsync();
+
+            RegisteredDevicesValue.Text = _devices.Count.ToString();
+            OnlineDevicesValue.Text = _devices.Count(x => x.IsEnabled).ToString();
+
+            CommandsTodayValue.Text = _history.Count(x =>
+                DateTime.TryParse(x.CreatedAt, out var createdAt) &&
+                createdAt.Date == DateTime.Today).ToString();
+
+            ConnectionStatusText.Text = $"{command} for {device.NodeId}: {message}";
+        }
+        catch (HttpRequestException ex)
+        {
+            ConnectionStatusText.Text =
+                $"Cannot reach the API. Check ApiClient's BaseAddress: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            ConnectionStatusText.Text = "The command request timed out.";
+        }
+        catch (Exception ex)
+        {
+            ConnectionStatusText.Text = $"Command request failed: {ex.Message}";
+        }
+    }
+
+    private void CommandHistorySearchTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+        => ApplyHistoryFilters();
+
+    private void HistoryFilter_Changed(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_categoriesLoaded)
+            ApplyHistoryFilters();
     }
 
     private void ApplyHistoryFilters()
     {
+        _filteredHistory.Clear();
+
         var search = CommandHistorySearchTextBox.Text?.Trim() ?? string.Empty;
+        var category = GetSelectedText(HistoryCategoryFilterComboBox);
 
-        var category = HistoryCategoryFilterComboBox.SelectedItem as string
-            ?? "All categories";
+        foreach (var item in _history)
+        {
+            var matchesSearch =
+                string.IsNullOrWhiteSpace(search) ||
+                item.Command.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                item.NodeId.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                item.Result.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                item.Category.Contains(search, StringComparison.OrdinalIgnoreCase);
 
-        var filtered = _allHistory.Where(entry =>
-            (string.IsNullOrWhiteSpace(search)
-                || entry.Command.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || entry.Device.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || entry.NodeId.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || entry.Source.Contains(search, StringComparison.OrdinalIgnoreCase))
-            && (category == "All categories"
-                || string.Equals(entry.Category, category, StringComparison.OrdinalIgnoreCase)));
+            var matchesCategory =
+                IsAllFilter(category) ||
+                item.Category.Equals(category, StringComparison.OrdinalIgnoreCase);
 
-        _visibleHistory.Clear();
+            if (matchesSearch && matchesCategory)
+                _filteredHistory.Add(item);
+        }
 
-        foreach (var entry in filtered)
-            _visibleHistory.Add(entry);
+        HistoryCountText.Text = $"{_filteredHistory.Count} commands";
 
-        HistoryCountText.Text = $"{_visibleHistory.Count} commands";
-        HistoryEmptyText.Text = _allHistory.Count == 0
-            ? "No command history available."
-            : "No commands match the selected filters.";
+        HistoryEmptyText.Text = _history.Count == 0
+            ? "No command history available. Commands will appear here when recorded by the API."
+            : "No commands match your search or category filter.";
 
-        HistoryEmptyText.IsVisible = _visibleHistory.Count == 0;
-        HistoryItemsControl.IsVisible = _visibleHistory.Count > 0;
+        HistoryEmptyText.IsVisible = _filteredHistory.Count == 0;
+        HistoryItemsControl.IsVisible = _filteredHistory.Count > 0;
     }
 
-    private async void DeviceOverride_Click(
-        object? sender,
-        RoutedEventArgs e)
-    {
-        if (sender is not Button button ||
-            string.IsNullOrWhiteSpace(button.Tag?.ToString()))
-            return;
 
-        var nodeId = button.Tag.ToString()!;
-
-        var device = _allDevices.FirstOrDefault(item =>
-            string.Equals(
-                item.NodeId,
-                nodeId,
-                StringComparison.OrdinalIgnoreCase));
-
-        if (device == null)
-        {
-            ShowDeviceMessage("Device was not found.", true);
-            return;
-        }
-
-        try
-        {
-            var command = await DetermineOverrideCommandAsync(device);
-
-            await SendCommandAsync(
-                nodeId,
-                command,
-                $"{command} executed for {device.DisplayName}.");
-        }
-        catch (Exception ex)
-        {
-            ShowDeviceMessage(
-                $"Could not determine device state: {ex.Message}",
-                true);
-        }
-    }
-
-    private async Task<string> DetermineOverrideCommandAsync(DeviceRow device)
-    {
-        if (device.Category.Contains("pump", StringComparison.OrdinalIgnoreCase))
-        {
-            var state = await GetSimulatedDeviceStateAsync(device.NodeId);
-            return state?.OutputOn == true ? "PumpStop" : "PumpStart";
-        }
-
-        if (device.Category.Contains("relay", StringComparison.OrdinalIgnoreCase)
-            || device.Category.Contains("switch", StringComparison.OrdinalIgnoreCase))
-        {
-            var state = await GetSimulatedDeviceStateAsync(device.NodeId);
-            return state?.OutputOn == true ? "RelayOff" : "RelayOn";
-        }
-
-        return "ManualOverride";
-    }
-
-    private async void DeviceEnableDisable_Click(
-        object? sender,
-        RoutedEventArgs e)
-    {
-        if (sender is not Button button ||
-            string.IsNullOrWhiteSpace(button.Tag?.ToString()))
-            return;
-
-        var nodeId = button.Tag.ToString()!;
-
-        var device = _allDevices.FirstOrDefault(item =>
-            string.Equals(
-                item.NodeId,
-                nodeId,
-                StringComparison.OrdinalIgnoreCase));
-
-        if (device == null)
-        {
-            ShowDeviceMessage("Device was not found.", true);
-            return;
-        }
-
-        var command = device.IsActive ? "DisableSensor" : "EnableSensor";
-
-        await SendCommandAsync(
-            nodeId,
-            command,
-            $"{command} executed for {device.DisplayName}.");
-    }
-
-    private async Task SendCommandAsync(
-        string nodeId,
-        string command,
-        string successMessage)
-    {
-        if (_isSendingCommand)
-        {
-            ShowDeviceMessage("Wait for the current command to finish.", true);
-            return;
-        }
-
-        _isSendingCommand = true;
-
-        try
-        {
-            ShowDeviceMessage($"Sending {command}...", false);
-
-            using var response = await _commandService.SendOverrideAsync(
-                nodeId,
-                command);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var details = await response.Content.ReadAsStringAsync();
-
-                ShowDeviceMessage(
-                    $"{command} failed (HTTP {(int)response.StatusCode}). {details}",
-                    true);
-
-                return;
-            }
-
-            ShowDeviceMessage(successMessage, false);
-            await LoadDataAsync();
-        }
-        catch (Exception ex)
-        {
-            ShowDeviceMessage(
-                $"Could not send {command}: {ex.Message}",
-                true);
-        }
-        finally
-        {
-            _isSendingCommand = false;
-            RestoreMessages();
-        }
-    }
-
-    private void ShowDeviceMessage(string message, bool isError)
-    {
-        if (isError)
-        {
-            _deviceError = message;
-            _deviceSuccess = null;
-            _deviceMessageIsError = true;
-        }
-        else
-        {
-            _deviceError = null;
-            _deviceSuccess = message;
-            _deviceMessageIsError = false;
-        }
-
-        RestoreMessages();
-    }
-
-    private void ShowDeviceError(string message)
-    {
-        _deviceError = message;
-        _deviceSuccess = null;
-        _deviceMessageIsError = true;
-
-        RestoreMessages();
-    }
-
-    private void ShowHistoryError(string message)
-    {
-        _historyError = message;
-        _historySuccess = null;
-
-        RestoreMessages();
-    }
-
-    private void RestoreMessages()
-    {
-        var deviceMessage = _deviceError ?? _deviceSuccess;
-
-        DeviceMessageText.Text = deviceMessage ?? string.Empty;
-        DeviceMessageText.IsVisible =
-            !string.IsNullOrWhiteSpace(deviceMessage);
-
-        DeviceMessageText.Foreground =
-            BrushFrom(_deviceMessageIsError ? "#FDA4AF" : "#6EE7B7");
-
-        var historyMessage = _historyError ?? _historySuccess;
-
-        HistoryMessageText.Text = historyMessage ?? string.Empty;
-        HistoryMessageText.IsVisible =
-            !string.IsNullOrWhiteSpace(historyMessage);
-
-        HistoryMessageText.Foreground =
-            BrushFrom(_historyError != null ? "#FDA4AF" : "#6EE7B7");
-    }
-
-    private void ClearDeviceError()
-    {
-        _deviceError = null;
-        _deviceSuccess = null;
-        _deviceMessageIsError = false;
-
-        RestoreMessages();
-    }
-
-    private void ClearHistoryError()
-    {
-        _historyError = null;
-        _historySuccess = null;
-
-        RestoreMessages();
-    }
-
-    private async void ExportHistoryButton_Click(
-        object? sender,
-        RoutedEventArgs e)
+    private async void ExportHistoryButton_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
             var topLevel = TopLevel.GetTopLevel(this);
 
-            if (topLevel?.StorageProvider == null)
+            if (topLevel?.StorageProvider is not { CanSave: true } storageProvider)
             {
-                ShowHistoryError("File export is unavailable.");
+                ConnectionStatusText.Text = "File saving is unavailable.";
                 return;
             }
 
-            var file = await topLevel.StorageProvider.SaveFilePickerAsync(
+            var lines = new List<string>
+        {
+            "Command,NodeId,Category,Result,CreatedAt"
+        };
+
+            foreach (var item in _filteredHistory)
+            {
+                lines.Add(string.Join(",",
+                    Csv(item.Command),
+                    Csv(item.NodeId),
+                    Csv(item.Category),
+                    Csv(item.Result),
+                    Csv(item.CreatedAt)));
+            }
+
+            var file = await storageProvider.SaveFilePickerAsync(
                 new FilePickerSaveOptions
                 {
-                    Title = "Export command history",
-                    SuggestedFileName =
-                        $"command-history-{DateTime.Now:yyyyMMdd-HHmmss}.csv",
+                    Title = "Export Command History",
+                    SuggestedFileName = $"CommandHistory_{DateTime.Now:yyyyMMdd_HHmmss}.csv",
+                    DefaultExtension = "csv",
                     FileTypeChoices = new[]
                     {
-                        new FilePickerFileType("CSV file")
-                        {
-                            Patterns = new[] { "*.csv" }
-                        }
+                    new FilePickerFileType("CSV file")
+                    {
+                        Patterns = new[] { "*.csv" }
+                    }
                     }
                 });
 
             if (file == null)
-                return;
-
-            await using var stream = await file.OpenWriteAsync();
-            await using var writer = new StreamWriter(stream, Encoding.UTF8);
-
-            await writer.WriteLineAsync(
-                "Command,Device,NodeId,Category,Source,Result,Time");
-
-            foreach (var entry in _visibleHistory)
             {
-                await writer.WriteLineAsync(string.Join(",",
-                    Csv(entry.Command),
-                    Csv(entry.Device),
-                    Csv(entry.NodeId),
-                    Csv(entry.Category),
-                    Csv(entry.Source),
-                    Csv(entry.Result),
-                    Csv(entry.Time)));
+                ConnectionStatusText.Text = "CSV export cancelled.";
+                return;
             }
 
-            _historyError = null;
-            _historySuccess = "Command history exported.";
+            await using (var stream = await file.OpenWriteAsync())
+            await using (var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(true)))
+            {
+                await writer.WriteAsync(string.Join(Environment.NewLine, lines));
+            }
 
-            RestoreMessages();
+            ConnectionStatusText.Text =
+                $"CSV exported successfully: {_filteredHistory.Count} records.";
         }
         catch (Exception ex)
         {
-            ShowHistoryError(ex.Message);
+            ConnectionStatusText.Text = $"CSV export failed: {ex.Message}";
         }
     }
+
 
     private static string Csv(string? value)
     {
         value ??= string.Empty;
-        return $"\"{value.Replace("\"", "\"\"")}\"";
+        return "\"" + value.Replace("\"", "\"\"") + "\"";
+    }
+
+    private static string GetSelectedText(ComboBox comboBox)
+    {
+        if (comboBox.SelectedItem is ComboBoxItem item)
+            return item.Content?.ToString()?.Trim() ?? string.Empty;
+
+        return comboBox.SelectedItem?.ToString()?.Trim() ?? string.Empty;
+    }
+
+    private static bool IsAllFilter(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ||
+               value.Equals("All", StringComparison.OrdinalIgnoreCase) ||
+               value.Equals("All Categories", StringComparison.OrdinalIgnoreCase) ||
+               value.Equals("All States", StringComparison.OrdinalIgnoreCase);
     }
 }
 
-public sealed class DeviceRow
+public class DeviceRow
 {
     public string DisplayName { get; set; } = string.Empty;
     public string NodeId { get; set; } = string.Empty;
+    public string MacAddress { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
-    public string Location { get; set; } = string.Empty;
+    public string StateText { get; set; } = string.Empty;
+    public string StateBackground { get; set; } = "#183044";
+    public string StateForeground { get; set; } = "#DCE7ED";
     public string LatestValue { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
     public string LatestTimestamp { get; set; } = string.Empty;
-    public string StateText { get; set; } = "Disabled";
-    public string EnableDisableLabel { get; set; } = "Enable Sensor";
-
-    public IBrush StateBackground { get; set; } =
-        new SolidColorBrush(Color.Parse("#303B46"));
-
-    public IBrush StateForeground { get; set; } =
-        new SolidColorBrush(Color.Parse("#CBD5E1"));
-
-    public bool IsActive { get; set; }
-    public bool HasAlert { get; set; }
-    public bool OutputOn { get; set; }
+    public string EnableDisableLabel { get; set; } = "Enable";
+    public bool IsEnabled { get; set; }
 }
 
-public sealed class HistoryRow
+public class HistoryRow
 {
     public string Command { get; set; } = string.Empty;
-    public string Device { get; set; } = string.Empty;
     public string NodeId { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
-    public string Source { get; set; } = string.Empty;
     public string Result { get; set; } = string.Empty;
-    public string Time { get; set; } = string.Empty;
-    public string CreatedAt => Time;
-
-    public IBrush ResultForeground { get; set; } =
-        new SolidColorBrush(Color.Parse("#CBD5E1"));
-}
-
-public sealed class CommandRecord
-{
-    public Guid Id { get; set; }
-    public string? NodeId { get; set; }
-    public string? Command { get; set; }
-    public string? Status { get; set; }
-    public string? Result { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? CompletedAt { get; set; }
-}
-
-public sealed class SimulatedDeviceState
-{
-    public string NodeId { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
-    public bool IsEnabled { get; set; }
-    public bool OutputOn { get; set; }
-    public string OutputState { get; set; } = "OFF";
+    public string ResultForeground { get; set; } = "#DCE7ED";
+    public string CreatedAt { get; set; } = string.Empty;
 }

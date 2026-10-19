@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Smart_X_API.Models;
 using Smart_X_API.Services;
 
@@ -17,22 +18,26 @@ public class SensorsController : ControllerBase
     private const long MaxAttachmentSizeBytes = 50 * 1024 * 1024;
 
     public static readonly List<SensorRegistration> Sensors = new();
+
     private static readonly List<SensorAttachment> Attachments = new();
-    private static readonly object SensorLock = new();
+    internal static readonly object SensorLock = new();
     private static readonly object AttachmentLock = new();
 
     private readonly IWebHostEnvironment _environment;
     private readonly LocationValidationService _locationValidationService;
     private readonly SensorCategoryStore _categoryStore;
+    private readonly DeviceLookupService _deviceLookup;
 
     public SensorsController(
         IWebHostEnvironment environment,
         LocationValidationService locationValidationService,
-        SensorCategoryStore categoryStore)
+        SensorCategoryStore categoryStore,
+        DeviceLookupService deviceLookup)
     {
         _environment = environment;
         _locationValidationService = locationValidationService;
         _categoryStore = categoryStore;
+        _deviceLookup = deviceLookup;
     }
 
     [HttpGet]
@@ -47,14 +52,11 @@ public class SensorsController : ControllerBase
     [HttpGet("{nodeId}")]
     public IActionResult GetSensor(string nodeId)
     {
-        lock (SensorLock)
-        {
-            var sensor = FindSensor(nodeId);
+        var sensor = _deviceLookup.FindByNodeId(nodeId);
 
-            return sensor == null
-                ? NotFound($"No sensor found with node ID '{nodeId}'.")
-                : Ok(sensor);
-        }
+        return sensor == null
+            ? NotFound($"No sensor found with node ID '{nodeId}'.")
+            : Ok(sensor);
     }
 
     [HttpPost]
@@ -91,14 +93,18 @@ public class SensorsController : ControllerBase
 
         lock (SensorLock)
         {
-            if (Sensors.Any(x => x.NodeId.Equals(
-                    nodeId, StringComparison.OrdinalIgnoreCase)))
+            if (Sensors.Any(x => string.Equals(
+                    x.NodeId,
+                    nodeId,
+                    StringComparison.OrdinalIgnoreCase)))
             {
                 return Conflict($"Node ID '{nodeId}' is already taken.");
             }
 
-            if (Sensors.Any(x => x.MacAddress.Equals(
-                    macAddress, StringComparison.OrdinalIgnoreCase)))
+            if (Sensors.Any(x => string.Equals(
+                    x.MacAddress,
+                    macAddress,
+                    StringComparison.OrdinalIgnoreCase)))
             {
                 return Conflict("A sensor with that MAC address is already registered.");
             }
@@ -113,6 +119,7 @@ public class SensorsController : ControllerBase
             };
 
             Sensors.Add(registeredSensor);
+            _deviceLookup.Refresh();
 
             return CreatedAtAction(
                 nameof(GetSensor),
@@ -176,13 +183,16 @@ public class SensorsController : ControllerBase
                 return NotFound($"No sensor found with node ID '{nodeId}'.");
 
             Sensors.Remove(sensor);
+            _deviceLookup.Refresh();
         }
 
         lock (AttachmentLock)
         {
             var sensorAttachments = Attachments
-                .Where(x => x.NodeId.Equals(
-                    sensor.NodeId, StringComparison.OrdinalIgnoreCase))
+                .Where(x => string.Equals(
+                    x.NodeId,
+                    sensor.NodeId,
+                    StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             foreach (var attachment in sensorAttachments)
@@ -198,17 +208,16 @@ public class SensorsController : ControllerBase
     [HttpGet("{nodeId}/attachments")]
     public IActionResult GetAttachments(string nodeId)
     {
-        lock (SensorLock)
-        {
-            if (FindSensor(nodeId) == null)
-                return NotFound($"No sensor found with node ID '{nodeId}'.");
-        }
+        if (_deviceLookup.FindByNodeId(nodeId) == null)
+            return NotFound($"No sensor found with node ID '{nodeId}'.");
 
         lock (AttachmentLock)
         {
             var attachments = Attachments
-                .Where(x => x.NodeId.Equals(
-                    nodeId, StringComparison.OrdinalIgnoreCase))
+                .Where(x => string.Equals(
+                    x.NodeId,
+                    nodeId,
+                    StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(x => x.UploadedAt)
                 .ToList();
 
@@ -222,12 +231,7 @@ public class SensorsController : ControllerBase
         string nodeId,
         IFormFile? file)
     {
-        SensorRegistration? sensor;
-
-        lock (SensorLock)
-        {
-            sensor = FindSensor(nodeId);
-        }
+        var sensor = _deviceLookup.FindByNodeId(nodeId);
 
         if (sensor == null)
             return NotFound($"No sensor found with node ID '{nodeId}'.");
@@ -341,17 +345,20 @@ public class SensorsController : ControllerBase
         lock (SensorLock)
         {
             return Sensors.FirstOrDefault(sensor =>
-                sensor.NodeId.Equals(
-                    identifier, StringComparison.OrdinalIgnoreCase) ||
-                sensor.MacAddress.Equals(
-                    identifier, StringComparison.OrdinalIgnoreCase));
+                string.Equals(
+                    sensor.NodeId,
+                    identifier,
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    sensor.MacAddress,
+                    identifier,
+                    StringComparison.OrdinalIgnoreCase));
         }
     }
 
     private SensorRegistration? FindSensor(string nodeId)
     {
-        return Sensors.FirstOrDefault(x =>
-            x.NodeId.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
+        return _deviceLookup.FindByNodeId(nodeId);
     }
 
     private SensorAttachment? FindAttachment(
@@ -360,7 +367,10 @@ public class SensorsController : ControllerBase
     {
         return Attachments.FirstOrDefault(x =>
             x.Id == attachmentId &&
-            x.NodeId.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
+            string.Equals(
+                x.NodeId,
+                nodeId,
+                StringComparison.OrdinalIgnoreCase));
     }
 
     private string GetAttachmentPath(SensorAttachment attachment)
