@@ -1,5 +1,4 @@
-﻿
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Smart_X_UI.Models;
@@ -56,6 +55,12 @@ public partial class MainWindow : Window
         _pageFactories[key] = factory;
     }
 
+    private bool IsTransientPage(string key)
+    {
+        return key.Equals("AddSensor", StringComparison.OrdinalIgnoreCase)
+            || key.Equals("AddLocation", StringComparison.OrdinalIgnoreCase);
+    }
+
     private Control CreateDashboard()
     {
         var dashboard = new SensorDashboard();
@@ -64,8 +69,7 @@ public partial class MainWindow : Window
         dashboard.AddSensorRequested += Dashboard_AddSensorRequested;
         dashboard.AddLocationRequested += Dashboard_AddLocationRequested;
         dashboard.SensorDetailsRequested += Dashboard_SensorDetailsRequested;
-        dashboard.ManageCategoriesRequested +=
-            Dashboard_ManageCategoriesRequested;
+        dashboard.ManageCategoriesRequested += Dashboard_ManageCategoriesRequested;
 
         return dashboard;
     }
@@ -74,8 +78,7 @@ public partial class MainWindow : Window
     {
         var categoriesPage = new SensorCategoryManagement();
 
-        categoriesPage.BackRequested +=
-            CategoryManagement_BackRequested;
+        categoriesPage.BackRequested += CategoryManagement_BackRequested;
 
         return categoriesPage;
     }
@@ -102,7 +105,9 @@ public partial class MainWindow : Window
 
     private void NavigateTo(string key)
     {
-        if (!_pageCache.TryGetValue(key, out var page))
+        Control page;
+
+        if (IsTransientPage(key))
         {
             if (!_pageFactories.TryGetValue(key, out var factory))
             {
@@ -111,7 +116,20 @@ public partial class MainWindow : Window
             }
 
             page = factory();
-            _pageCache.Add(key, page);
+        }
+        else
+        {
+            if (!_pageCache.TryGetValue(key, out page!))
+            {
+                if (!_pageFactories.TryGetValue(key, out var factory))
+                {
+                    throw new KeyNotFoundException(
+                        $"Page '{key}' has not been registered.");
+                }
+
+                page = factory();
+                _pageCache.Add(key, page);
+            }
         }
 
         MainContent.Content = page;
@@ -149,8 +167,7 @@ public partial class MainWindow : Window
 
         try
         {
-            using var response =
-                await _httpClient.GetAsync("api/health");
+            using var response = await _httpClient.GetAsync("api/health");
 
             if (response.IsSuccessStatusCode)
             {
