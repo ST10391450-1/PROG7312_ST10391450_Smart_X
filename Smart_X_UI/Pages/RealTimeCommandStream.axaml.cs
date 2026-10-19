@@ -53,6 +53,12 @@ public partial class RealTimeCommandStream : UserControl
     private bool _isSendingCommand;
     private bool _isAttached;
     private bool _filtersInitialized;
+    private bool _deviceMessageIsError;
+
+    private string? _deviceError;
+    private string? _historyError;
+    private string? _deviceSuccess;
+    private string? _historySuccess;
 
     private static readonly JsonSerializerOptions JsonOptions =
         new(JsonSerializerDefaults.Web)
@@ -164,7 +170,6 @@ public partial class RealTimeCommandStream : UserControl
             ApplyHistoryFilters();
     }
 
-
     private async Task LoadDataAsync()
     {
         if (_isLoading)
@@ -196,8 +201,6 @@ public partial class RealTimeCommandStream : UserControl
             ApplyDeviceFilters();
             UpdateSummaryCounters();
 
-            DeviceMessageText.IsVisible = false;
-
             List<SensorReadingRecord> readings = new();
             List<CommandRecord> commands = new();
 
@@ -207,12 +210,18 @@ public partial class RealTimeCommandStream : UserControl
                     .GetFromJsonAsync<List<SensorReadingRecord>>(
                         "api/Telemetry",
                         JsonOptions) ?? new List<SensorReadingRecord>();
+
+                if (_deviceError?.StartsWith(
+                        "Sensors loaded, but telemetry failed:",
+                        StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    ClearDeviceError();
+                }
             }
             catch (Exception ex)
             {
-                DeviceMessageText.Text =
-                    $"Sensors loaded, but telemetry failed: {ex.Message}";
-                DeviceMessageText.IsVisible = true;
+                ShowDeviceError(
+                    $"Sensors loaded, but telemetry failed: {ex.Message}");
             }
 
             try
@@ -221,12 +230,18 @@ public partial class RealTimeCommandStream : UserControl
                     .GetFromJsonAsync<List<CommandRecord>>(
                         "api/Commands",
                         JsonOptions) ?? new List<CommandRecord>();
+
+                if (_historyError?.StartsWith(
+                        "Command history failed:",
+                        StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    ClearHistoryError();
+                }
             }
             catch (Exception ex)
             {
-                HistoryMessageText.Text =
-                    $"Command history failed: {ex.Message}";
-                HistoryMessageText.IsVisible = true;
+                ShowHistoryError(
+                    $"Command history failed: {ex.Message}");
             }
 
             var states = new Dictionary<string, SimulatedDeviceState>(
@@ -331,11 +346,11 @@ public partial class RealTimeCommandStream : UserControl
             ConnectionStatusText.Text = "API request failed";
             ConnectionStatusText.Foreground = BrushFrom("#FDA4AF");
 
-            DeviceMessageText.Text = ex.Message;
-            DeviceMessageText.IsVisible = true;
+            ShowDeviceError(ex.Message);
         }
         finally
         {
+            RestoreMessages();
             _isLoading = false;
         }
     }
@@ -853,15 +868,81 @@ public partial class RealTimeCommandStream : UserControl
         finally
         {
             _isSendingCommand = false;
+            RestoreMessages();
         }
     }
 
     private void ShowDeviceMessage(string message, bool isError)
     {
-        DeviceMessageText.Text = message;
-        DeviceMessageText.IsVisible = true;
+        if (isError)
+        {
+            _deviceError = message;
+            _deviceSuccess = null;
+            _deviceMessageIsError = true;
+        }
+        else
+        {
+            _deviceError = null;
+            _deviceSuccess = message;
+            _deviceMessageIsError = false;
+        }
+
+        RestoreMessages();
+    }
+
+    private void ShowDeviceError(string message)
+    {
+        _deviceError = message;
+        _deviceSuccess = null;
+        _deviceMessageIsError = true;
+
+        RestoreMessages();
+    }
+
+    private void ShowHistoryError(string message)
+    {
+        _historyError = message;
+        _historySuccess = null;
+
+        RestoreMessages();
+    }
+
+    private void RestoreMessages()
+    {
+        var deviceMessage = _deviceError ?? _deviceSuccess;
+
+        DeviceMessageText.Text = deviceMessage ?? string.Empty;
+        DeviceMessageText.IsVisible =
+            !string.IsNullOrWhiteSpace(deviceMessage);
+
         DeviceMessageText.Foreground =
-            BrushFrom(isError ? "#FDA4AF" : "#6EE7B7");
+            BrushFrom(_deviceMessageIsError ? "#FDA4AF" : "#6EE7B7");
+
+        var historyMessage = _historyError ?? _historySuccess;
+
+        HistoryMessageText.Text = historyMessage ?? string.Empty;
+        HistoryMessageText.IsVisible =
+            !string.IsNullOrWhiteSpace(historyMessage);
+
+        HistoryMessageText.Foreground =
+            BrushFrom(_historyError != null ? "#FDA4AF" : "#6EE7B7");
+    }
+
+    private void ClearDeviceError()
+    {
+        _deviceError = null;
+        _deviceSuccess = null;
+        _deviceMessageIsError = false;
+
+        RestoreMessages();
+    }
+
+    private void ClearHistoryError()
+    {
+        _historyError = null;
+        _historySuccess = null;
+
+        RestoreMessages();
     }
 
     private async void ExportHistoryButton_Click(
@@ -874,8 +955,7 @@ public partial class RealTimeCommandStream : UserControl
 
             if (topLevel?.StorageProvider == null)
             {
-                HistoryMessageText.Text = "File export is unavailable.";
-                HistoryMessageText.IsVisible = true;
+                ShowHistoryError("File export is unavailable.");
                 return;
             }
 
@@ -915,13 +995,14 @@ public partial class RealTimeCommandStream : UserControl
                     Csv(entry.Time)));
             }
 
-            HistoryMessageText.Text = "Command history exported.";
-            HistoryMessageText.IsVisible = true;
+            _historyError = null;
+            _historySuccess = "Command history exported.";
+
+            RestoreMessages();
         }
         catch (Exception ex)
         {
-            HistoryMessageText.Text = ex.Message;
-            HistoryMessageText.IsVisible = true;
+            ShowHistoryError(ex.Message);
         }
     }
 
@@ -942,10 +1023,13 @@ public sealed class DeviceRow
     public string LatestTimestamp { get; set; } = string.Empty;
     public string StateText { get; set; } = "Disabled";
     public string EnableDisableLabel { get; set; } = "Enable Sensor";
+
     public IBrush StateBackground { get; set; } =
         new SolidColorBrush(Color.Parse("#303B46"));
+
     public IBrush StateForeground { get; set; } =
         new SolidColorBrush(Color.Parse("#CBD5E1"));
+
     public bool IsActive { get; set; }
     public bool HasAlert { get; set; }
     public bool OutputOn { get; set; }
@@ -961,6 +1045,7 @@ public sealed class HistoryRow
     public string Result { get; set; } = string.Empty;
     public string Time { get; set; } = string.Empty;
     public string CreatedAt => Time;
+
     public IBrush ResultForeground { get; set; } =
         new SolidColorBrush(Color.Parse("#CBD5E1"));
 }
