@@ -1,0 +1,312 @@
+
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:Smart_X_UI.Models"
+    x:Class="Smart_X_UI.Pages.SensorCategoryManagement">
+
+    <UserControl.Styles>
+
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#101F2D"/>
+            <Setter Property="Foreground" Value="#E8F1F8"/>
+            <Setter Property="BorderBrush" Value="#29445A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="7"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="MinHeight" Value="42"/>
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="Background" Value="#1B3042"/>
+            <Setter Property="Foreground" Value="#D8E6F3"/>
+            <Setter Property="BorderBrush" Value="#29445A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="7"/>
+            <Setter Property="Padding" Value="14,9"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="MinHeight" Value="38"/>
+        </Style>
+
+        <Style Selector="Button:pointerover">
+            <Setter Property="Background" Value="#243F55"/>
+        </Style>
+
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="#2D8CFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#2D8CFF"/>
+        </Style>
+
+        <Style Selector="Button.primary:pointerover">
+            <Setter Property="Background" Value="#4A9EFF"/>
+        </Style>
+
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#382127"/>
+            <Setter Property="Foreground" Value="#FFB8BE"/>
+            <Setter Property="BorderBrush" Value="#63313C"/>
+        </Style>
+
+        <Style Selector="Button.danger:pointerover">
+            <Setter Property="Background" Value="#512832"/>
+        </Style>
+
+        <Style Selector="Button.back">
+            <Setter Property="Background" Value="#162636"/>
+            <Setter Property="Foreground" Value="#9EB5C8"/>
+            <Setter Property="BorderBrush" Value="#29445A"/>
+        </Style>
+
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="#B7C9D8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Grid Background="#0B1722"
+          RowDefinitions="Auto,*">
+
+        <Border
+            Grid.Row="0"
+            Background="#101F2D"
+            BorderBrush="#233B50"
+            BorderThickness="0,0,0,1"
+            Padding="24,20">
+
+            <Grid ColumnDefinitions="*,Auto"
+                  ColumnSpacing="16">
+
+                <StackPanel Spacing="5">
+                    <TextBlock
+                        Text="MANAGE CATEGORIES"
+                        FontSize="23"
+                        FontWeight="Bold"
+                        Foreground="#F1F7FC"/>
+
+                    <TextBlock
+                        Text="Create and maintain categories used by registered sensors."
+                        FontSize="12"
+                        Foreground="#8199AC"
+                        TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <Button
+                    Grid.Column="1"
+                    Content="←  Dashboard"
+                    Classes="back"
+                    Click="BackButton_Click"
+                    VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <ScrollViewer
+            Grid.Row="1"
+            Padding="24"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+
+            <StackPanel
+                Spacing="20"
+                HorizontalAlignment="Stretch">
+
+                <Border
+                    Background="#162636"
+                    BorderBrush="#233B50"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="22"
+                    MaxWidth="900"
+                    HorizontalAlignment="Center">
+
+                    <StackPanel Spacing="16">
+
+                        <StackPanel Spacing="4">
+                            <TextBlock
+                                x:Name="CategoryFormTitleText"
+                                Text="CREATE CATEGORY"
+                                FontSize="16"
+                                FontWeight="Bold"
+                                Foreground="#F1F7FC"/>
+
+                            <TextBlock
+                                Text="Category names must be unique."
+                                FontSize="12"
+                                Foreground="#8199AC"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="7">
+                            <TextBlock
+                                Text="CATEGORY NAME"
+                                Classes="label"/>
+
+                            <TextBox
+                                x:Name="CategoryNameTextBox"
+                                Watermark="Enter category name"
+                                MaxLength="100"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="7">
+                            <TextBlock
+                                Text="DESCRIPTION"
+                                Classes="label"/>
+
+                            <TextBox
+                                x:Name="CategoryDescriptionTextBox"
+                                Watermark="Enter a description (optional)"
+                                AcceptsReturn="True"
+                                TextWrapping="Wrap"
+                                MinHeight="85"
+                                MaxLength="500"/>
+                        </StackPanel>
+
+                        <TextBlock
+                            x:Name="CategoryStatusText"
+                            Text="Loading categories..."
+                            FontSize="12"
+                            TextWrapping="Wrap"
+                            Foreground="#8FA8BC"/>
+
+                        <WrapPanel>
+                            <Button
+                                x:Name="SaveCategoryButton"
+                                Content="Save Category"
+                                Classes="primary"
+                                Click="SaveCategoryButton_Click"
+                                Margin="0,0,8,8"/>
+
+                            <Button
+                                Content="Clear Form"
+                                Click="ClearButton_Click"
+                                Margin="0,0,8,8"/>
+
+                            <Button
+                                Content="Refresh"
+                                Click="RefreshButton_Click"
+                                Margin="0,0,8,8"/>
+                        </WrapPanel>
+
+                    </StackPanel>
+                </Border>
+
+                <Border
+                    Background="#101F2D"
+                    BorderBrush="#233B50"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="20"
+                    MaxWidth="900"
+                    HorizontalAlignment="Center">
+
+                    <StackPanel Spacing="14">
+
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Spacing="3">
+                                <TextBlock
+                                    Text="EXISTING CATEGORIES"
+                                    FontSize="16"
+                                    FontWeight="Bold"
+                                    Foreground="#F1F7FC"/>
+
+                                <TextBlock
+                                    x:Name="CategoryCountText"
+                                    Text="0 categories"
+                                    FontSize="11"
+                                    Foreground="#8199AC"/>
+                            </StackPanel>
+
+                            <Border
+                                Grid.Column="1"
+                                Background="#142A24"
+                                CornerRadius="12"
+                                Padding="10,5"
+                                VerticalAlignment="Center">
+
+                                <TextBlock
+                                    Text="API DATA"
+                                    FontSize="9"
+                                    FontWeight="Bold"
+                                    Foreground="#39D98A"/>
+                            </Border>
+                        </Grid>
+
+                        <TextBlock
+                            x:Name="EmptyCategoriesText"
+                            Text="No categories found."
+                            IsVisible="False"
+                            Foreground="#8199AC"
+                            FontSize="12"
+                            Margin="0,8"/>
+
+                        <ItemsControl
+                            x:Name="CategoriesItemsControl">
+
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate
+                                    x:DataType="models:SensorCategory">
+
+                                    <Border
+                                        Background="#162636"
+                                        BorderBrush="#294257"
+                                        BorderThickness="1"
+                                        CornerRadius="7"
+                                        Padding="14"
+                                        Margin="0,0,0,10">
+
+                                        <Grid
+                                            ColumnDefinitions="*,Auto"
+                                            ColumnSpacing="14">
+
+                                            <StackPanel
+                                                Spacing="5"
+                                                VerticalAlignment="Center">
+
+                                                <TextBlock
+                                                    Text="{Binding Name}"
+                                                    FontSize="14"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="#F1F7FC"
+                                                    TextWrapping="Wrap"/>
+
+                                                <TextBlock
+                                                    Text="{Binding Description}"
+                                                    FontSize="12"
+                                                    Foreground="#8FA8BC"
+                                                    TextWrapping="Wrap"/>
+                                            </StackPanel>
+
+                                            <StackPanel
+                                                Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                Spacing="6"
+                                                VerticalAlignment="Center">
+
+                                                <Button
+                                                    Content="Edit"
+                                                    Tag="{Binding}"
+                                                    Click="EditCategoryButton_Click"/>
+
+                                                <Button
+                                                    Content="Delete"
+                                                    Classes="danger"
+                                                    Tag="{Binding}"
+                                                    Click="DeleteCategoryButton_Click"/>
+                                            </StackPanel>
+
+                                        </Grid>
+                                    </Border>
+
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+
+                        </ItemsControl>
+
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

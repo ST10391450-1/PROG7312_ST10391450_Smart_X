@@ -6,9 +6,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+
+builder.Services.AddSingleton<SensorUnitDetectionService>();
+builder.Services.AddSingleton<SensorCategoryStore>();
 builder.Services.AddSingleton<TelemetryService>();
 builder.Services.AddSingleton<LocationService>();
 builder.Services.AddSingleton<LocationValidationService>();
+builder.Services.AddScoped<CommandStreamService>();
+
 
 var app = builder.Build();
 

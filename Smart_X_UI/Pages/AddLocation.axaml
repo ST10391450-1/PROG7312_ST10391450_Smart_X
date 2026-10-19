@@ -65,7 +65,8 @@
                         Foreground="#F1F6FA"/>
 
                     <TextBlock
-                        Text="Create a deployment location for Smart X sensors."
+                        Text="Create a deployment location for Smart X 
+                        s."
                         FontSize="13"
                         Foreground="#8FA6B8"/>
                 </StackPanel>

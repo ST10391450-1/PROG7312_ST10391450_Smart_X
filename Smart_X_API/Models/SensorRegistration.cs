@@ -1,4 +1,5 @@
-﻿namespace Smart_X_API.Models;
+﻿
+namespace Smart_X_API.Models;
 
 public class SensorRegistration
 {
@@ -6,4 +7,5 @@ public class SensorRegistration
     public string Location { get; set; } = string.Empty;
     public string NodeId { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
+    public bool IsEnabled { get; set; } = true;
 }

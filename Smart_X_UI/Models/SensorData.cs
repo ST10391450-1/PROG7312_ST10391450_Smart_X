@@ -1,4 +1,5 @@
-﻿using Avalonia.Media;
+﻿
+using Avalonia.Media;
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -12,31 +13,39 @@ public class SensorRegistration : INotifyPropertyChanged
     public string Location { get; set; } = string.Empty;
     public string NodeId { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
 
-    private bool _isActive;
+    private bool _isEnabled = true;
 
     [JsonIgnore]
-    public bool IsActive
+    public bool IsEnabled
     {
-        get => _isActive;
+        get => _isEnabled;
         set
         {
-            if (_isActive == value)
+            if (_isEnabled == value)
                 return;
 
-            _isActive = value;
-
+            _isEnabled = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(IsActive));
             OnPropertyChanged(nameof(StatusText));
             OnPropertyChanged(nameof(StatusColor));
         }
     }
 
     [JsonIgnore]
-    public string StatusText => IsActive ? "ACTIVE" : "INACTIVE";
+    public bool IsActive
+    {
+        get => IsEnabled;
+        set => IsEnabled = value;
+    }
 
     [JsonIgnore]
-    public IBrush StatusColor => IsActive ? ActiveBrush : InactiveBrush;
+    public string StatusText => IsEnabled ? "ACTIVE" : "INACTIVE";
+
+    [JsonIgnore]
+    public IBrush StatusColor => IsEnabled ? ActiveBrush : InactiveBrush;
 
     private string _currentDataText = "No data";
 
@@ -89,45 +98,5 @@ public class SensorRegistration : INotifyPropertyChanged
     public override string ToString()
     {
         return $"{NodeId} — {Category} — {Location}";
-    }
-}
-
-public class TelemetryPacket<T>
-{
-    public string DeviceId { get; set; } = string.Empty;
-    public DateTime Timestamp { get; set; }
-    public string SensorCategory { get; set; } = string.Empty;
-    public T Value { get; set; } = default!;
-}
-
-public class SensorReadingRecord
-{
-    public string DeviceId { get; set; } = string.Empty;
-    public string SensorCategory { get; set; } = string.Empty;
-    public double Value { get; set; }
-    public DateTime Timestamp { get; set; }
-}
-
-public class SensorAttachment
-{
-    public Guid Id { get; set; }
-    public string NodeId { get; set; } = string.Empty;
-    public string FileName { get; set; } = string.Empty;
-    public string ContentType { get; set; } = string.Empty;
-    public long FileSize { get; set; }
-    public DateTime UploadedAt { get; set; }
-
-    public string DisplaySize
-    {
-        get
-        {
-            if (FileSize < 1024)
-                return $"{FileSize} B";
-
-            if (FileSize < 1024 * 1024)
-                return $"{FileSize / 1024.0:F1} KB";
-
-            return $"{FileSize / (1024.0 * 1024.0):F1} MB";
-        }
     }
 }

@@ -1,0 +1,390 @@
+
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Smart_X_UI.Pages"
+    x:Class="Smart_X_UI.Pages.RealTimeCommandStream"
+    x:CompileBindings="False"
+    Background="#0B1722"
+    Foreground="#DCE7ED">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="#DCE7ED"/>
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="Background" Value="#183044"/>
+            <Setter Property="Foreground" Value="#DCE7ED"/>
+            <Setter Property="BorderBrush" Value="#2B485D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,9"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button:pointerover">
+            <Setter Property="Background" Value="#24475D"/>
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#102432"/>
+            <Setter Property="Foreground" Value="#DCE7ED"/>
+            <Setter Property="BorderBrush" Value="#2B485D"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Padding" Value="10,8"/>
+        </Style>
+
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#102432"/>
+            <Setter Property="Foreground" Value="#DCE7ED"/>
+            <Setter Property="BorderBrush" Value="#2B485D"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+
+        <Style Selector="Border.panel">
+            <Setter Property="Background" Value="#102432"/>
+            <Setter Property="BorderBrush" Value="#243D50"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="18"/>
+        </Style>
+
+        <Style Selector="TextBlock.section-title">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="#8FA7B8"/>
+        </Style>
+
+        <Style Selector="TextBlock.metric-value">
+            <Setter Property="FontSize" Value="27"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+
+        <Style Selector="Border.device-card">
+            <Setter Property="Background" Value="#132B3B"/>
+            <Setter Property="BorderBrush" Value="#29475A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="22" Spacing="18">
+
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="5">
+                    <TextBlock Text="REAL-TIME COMMAND STREAM"
+                               FontSize="25"
+                               FontWeight="Bold"
+                               TextWrapping="Wrap"/>
+
+                    <TextBlock Text="Monitor sensor activity, control devices and review command history."
+                               Classes="muted"
+                               TextWrapping="Wrap"/>
+
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8"
+                                Margin="0,7,0,0">
+                        <Ellipse Width="9"
+                                 Height="9"
+                                 Fill="#02BEA0"
+                                 VerticalAlignment="Center"/>
+
+                        <TextBlock x:Name="ConnectionStatusText"
+                                   Text="Connecting to API..."
+                                   Classes="muted"
+                                   FontSize="12"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top">
+                    <Button Content="Refresh"
+                            Click="RefreshButton_Click"/>
+
+                    <Button Content="Back"
+                            Click="BackButton_Click"/>
+                </StackPanel>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,*"
+                  RowDefinitions="Auto,Auto"
+                  ColumnSpacing="12"
+                  RowSpacing="12">
+
+                <Border Grid.Row="0" Grid.Column="0" Classes="panel">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Registered devices" Classes="muted"/>
+                        <TextBlock x:Name="RegisteredDevicesValue"
+                                   Text="0"
+                                   Classes="metric-value"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="0" Grid.Column="1" Classes="panel">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Enabled devices" Classes="muted"/>
+                        <TextBlock x:Name="OnlineDevicesValue"
+                                   Text="0"
+                                   Classes="metric-value"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1" Grid.Column="0" Classes="panel">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Active alerts" Classes="muted"/>
+                        <TextBlock x:Name="ActiveAlertsValue"
+                                   Text="0"
+                                   Classes="metric-value"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1" Grid.Column="1" Classes="panel">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Commands today" Classes="muted"/>
+                        <TextBlock x:Name="CommandsTodayValue"
+                                   Text="0"
+                                   Classes="metric-value"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border Classes="panel">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Device monitoring"
+                                       Classes="section-title"/>
+
+                            <TextBlock Text="Search, filter and remotely control registered devices."
+                                       Classes="muted"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="DeviceCountText"
+                                   Grid.Column="1"
+                                   Text="0 devices"
+                                   Classes="muted"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <TextBox x:Name="DeviceSearchTextBox"
+                             Watermark="Search name, node ID or location..."
+                             TextChanged="DeviceSearchTextBox_TextChanged"/>
+
+                    <Grid ColumnDefinitions="*,*"
+                          ColumnSpacing="10">
+                        <ComboBox x:Name="DeviceCategoryFilterComboBox"
+                                  Grid.Column="0"
+                                  PlaceholderText="All categories"
+                                  SelectionChanged="DeviceFilter_Changed"/>
+
+                        <ComboBox x:Name="DeviceStateFilterComboBox"
+                                  Grid.Column="1"
+                                  PlaceholderText="All states"
+                                  SelectionChanged="DeviceFilter_Changed"/>
+                    </Grid>
+
+                    <TextBlock x:Name="DeviceMessageText"
+                               IsVisible="False"
+                               TextWrapping="Wrap"
+                               Foreground="#FFB86B"/>
+
+                    <TextBlock x:Name="DeviceEmptyText"
+                               Text="Loading registered devices..."
+                               Classes="muted"
+                               HorizontalAlignment="Center"
+                               Margin="0,20"/>
+
+                    <ItemsControl x:Name="DevicesItemsControl">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:DeviceRow">
+                                <Border Classes="device-card">
+                                    <Grid ColumnDefinitions="*,Auto"
+                                          RowDefinitions="Auto,Auto,Auto,Auto"
+                                          ColumnSpacing="14"
+                                          RowSpacing="8">
+                                        <StackPanel Grid.Row="0"
+                                                    Grid.Column="0"
+                                                    Spacing="4">
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       FontSize="16"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"/>
+
+                                            <TextBlock Text="{Binding NodeId}"
+                                                       Classes="muted"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+
+                                        <Border Grid.Row="0"
+                                                Grid.Column="1"
+                                                Background="{Binding StateBackground}"
+                                                CornerRadius="5"
+                                                Padding="9,5"
+                                                VerticalAlignment="Top">
+                                            <TextBlock Text="{Binding StateText}"
+                                                       Foreground="{Binding StateForeground}"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"/>
+                                        </Border>
+
+                                        <StackPanel Grid.Row="1"
+                                                    Grid.ColumnSpan="2"
+                                                    Orientation="Horizontal"
+                                                    Spacing="8">
+                                            <TextBlock Text="Category:"
+                                                       Classes="muted"/>
+                                            <TextBlock Text="{Binding Category}"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="2"
+                                                    Grid.ColumnSpan="2"
+                                                    Spacing="5">
+                                            <TextBlock Text="{Binding LatestValue}"
+                                                       FontSize="17"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"/>
+
+                                            <TextBlock Text="{Binding Location}"
+                                                       Classes="muted"
+                                                       TextWrapping="Wrap"/>
+
+                                            <TextBlock Text="{Binding LatestTimestamp}"
+                                                       Classes="muted"
+                                                       FontSize="11"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+
+                                        <Grid Grid.Row="3"
+                                              Grid.ColumnSpan="2"
+                                              ColumnDefinitions="*,*"
+                                              ColumnSpacing="8">
+                                            <Button Grid.Column="0"
+                                                    Content="Manual Override"
+                                                    Tag="{Binding NodeId}"
+                                                    Click="DeviceOverride_Click"/>
+
+                                            <Button Grid.Column="1"
+                                                    Content="{Binding EnableDisableLabel}"
+                                                    Tag="{Binding NodeId}"
+                                                    Click="DeviceEnableDisable_Click"/>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="panel">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Command history"
+                                       Classes="section-title"/>
+
+                            <TextBlock Text="Review previous overrides and remote enable/disable requests."
+                                       Classes="muted"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Content="Export CSV"
+                                Click="ExportHistoryButton_Click"
+                                VerticalAlignment="Top"/>
+                    </Grid>
+
+                    <TextBox x:Name="CommandHistorySearchTextBox"
+                             Watermark="Search device or command..."
+                             TextChanged="CommandHistorySearchTextBox_TextChanged"/>
+
+                    <Grid ColumnDefinitions="*,Auto"
+                          ColumnSpacing="10">
+                        <ComboBox x:Name="HistoryCategoryFilterComboBox"
+                                  Grid.Column="0"
+                                  PlaceholderText="All categories"
+                                  SelectionChanged="HistoryFilter_Changed"/>
+
+                        <TextBlock x:Name="HistoryCountText"
+                                   Grid.Column="1"
+                                   Text="0 commands"
+                                   Classes="muted"
+                                   VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <TextBlock x:Name="HistoryMessageText"
+                               IsVisible="False"
+                               TextWrapping="Wrap"
+                               Foreground="#FFB86B"/>
+
+                    <TextBlock x:Name="HistoryEmptyText"
+                               Text="No command history available."
+                               Classes="muted"
+                               HorizontalAlignment="Center"
+                               Margin="0,18"/>
+
+                    <ItemsControl x:Name="HistoryItemsControl">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:HistoryRow">
+                                <Border Background="#132B3B"
+                                        BorderBrush="#29475A"
+                                        BorderThickness="1"
+                                        CornerRadius="7"
+                                        Padding="12"
+                                        Margin="0,0,0,8">
+                                    <Grid ColumnDefinitions="*,Auto"
+                                          RowDefinitions="Auto,Auto,Auto"
+                                          ColumnSpacing="12"
+                                          RowSpacing="5">
+                                        <TextBlock Grid.Row="0"
+                                                   Grid.Column="0"
+                                                   Text="{Binding Command}"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"/>
+
+                                        <TextBlock Grid.Row="0"
+                                                   Grid.Column="1"
+                                                   Text="{Binding Result}"
+                                                   Foreground="{Binding ResultForeground}"
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Top"
+                                                   TextWrapping="Wrap"/>
+
+                                        <TextBlock Grid.Row="1"
+                                                   Grid.ColumnSpan="2"
+                                                   Text="{Binding NodeId}"
+                                                   Classes="muted"
+                                                   TextWrapping="Wrap"/>
+
+                                        <TextBlock Grid.Row="2"
+                                                   Grid.ColumnSpan="2"
+                                                   Text="{Binding CreatedAt}"
+                                                   Classes="muted"
+                                                   FontSize="11"
+                                                   TextWrapping="Wrap"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

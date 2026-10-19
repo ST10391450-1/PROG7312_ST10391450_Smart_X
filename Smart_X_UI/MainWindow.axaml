@@ -219,7 +219,8 @@
                         </Button>
 
                         <Button
-                            IsEnabled="False"
+                            x:Name="RealTimeCommandStream"
+                            Click="RealTimeCommandStream_Click"
                             HorizontalContentAlignment="Stretch"
                             MinHeight="86">
 
@@ -234,7 +235,7 @@
                                         Text="Real-Time Command Stream"
                                         FontSize="14"
                                         FontWeight="SemiBold"
-                                        Foreground="#526777"/>
+                                        Foreground="#E8F0F5"/>
 
                                     <TextBlock
                                         Text="Send commands to connected devices"
@@ -242,13 +243,25 @@
                                         Foreground="#526777"/>
                                 </StackPanel>
 
-                                <TextBlock
+                                <StackPanel
                                     Grid.Column="1"
-                                    Text="UNAVAILABLE"
-                                    FontSize="9"
-                                    FontWeight="Bold"
-                                    Foreground="#506575"
-                                    VerticalAlignment="Center"/>
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Right"
+                                    Spacing="6">
+
+                                    <TextBlock
+                                        Text="AVAILABLE"
+                                        FontSize="9"
+                                        FontWeight="Bold"
+                                        Foreground="#35B86B"
+                                        HorizontalAlignment="Right"/>
+
+                                    <Ellipse
+                                        Width="7"
+                                        Height="7"
+                                        Fill="#35B86B"
+                                        HorizontalAlignment="Right"/>
+                                </StackPanel>
                             </Grid>
                         </Button>
 

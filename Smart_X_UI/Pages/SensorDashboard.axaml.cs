@@ -1,4 +1,5 @@
-﻿using Avalonia.Controls;
+﻿
+using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Smart_X_UI.Models;
@@ -15,35 +16,31 @@ namespace Smart_X_UI.Pages;
 
 public partial class SensorDashboard : UserControl
 {
-    #region Fields
-
     private readonly SensorService _sensorService =
         new(ApiClient.HttpClient);
 
     private readonly ObservableCollection<SensorRegistration> _sensors = new();
+    private readonly ObservableCollection<SensorRegistration> _visibleSensors = new();
     private readonly List<SensorReadingRecord> _telemetry = new();
     private readonly DispatcherTimer _refreshTimer;
 
     private bool _refreshing;
 
-    #endregion
-
-    #region Events
-
     public event EventHandler? BackRequested;
     public event EventHandler? AddSensorRequested;
     public event EventHandler? AddLocationRequested;
+    public event EventHandler? ManageCategoriesRequested;
     public event EventHandler<SensorRegistration>? SensorDetailsRequested;
-
-    #endregion
-
-    #region Constructor
 
     public SensorDashboard()
     {
         InitializeComponent();
 
-        SensorsItemsControl.ItemsSource = _sensors;
+        SensorsItemsControl.ItemsSource = _visibleSensors;
+
+        SensorSearchBox.TextChanged += SensorSearchBox_TextChanged;
+        CategoryFilter.SelectionChanged += Filter_SelectionChanged;
+        StatusFilter.SelectionChanged += Filter_SelectionChanged;
 
         _refreshTimer = new DispatcherTimer
         {
@@ -56,17 +53,11 @@ public partial class SensorDashboard : UserControl
         _ = RefreshDashboardAsync();
     }
 
-    #endregion
-
-    #region Dashboard Refresh
-
-    // Refreshes the dashboard every few seconds.
     private async void RefreshTimer_Tick(object? sender, EventArgs e)
     {
         await RefreshDashboardAsync();
     }
 
-    // Loads the latest sensor and telemetry information.
     private async Task RefreshDashboardAsync()
     {
         if (_refreshing)
@@ -85,7 +76,6 @@ public partial class SensorDashboard : UserControl
         }
     }
 
-    // Gets the registered sensors from the API.
     private async Task LoadSensorsAsync()
     {
         ConnectionStatusText.Text = "CONNECTING...";
@@ -98,7 +88,10 @@ public partial class SensorDashboard : UserControl
             _sensors.Clear();
 
             foreach (var sensor in sensors)
+            {
+                sensor.Unit = ResolveUnit(sensor.Category);
                 _sensors.Add(sensor);
+            }
 
             ConnectionStatusText.Text = "CONNECTED";
         }
@@ -122,13 +115,12 @@ public partial class SensorDashboard : UserControl
         }
     }
 
-    // Gets the latest telemetry readings from the API.
     private async Task LoadTelemetryAsync()
     {
         try
         {
-            using var response = await ApiClient.HttpClient.GetAsync(
-                "api/Telemetry");
+            using var response =
+                await ApiClient.HttpClient.GetAsync("api/Telemetry");
 
             response.EnsureSuccessStatusCode();
 
@@ -140,11 +132,11 @@ public partial class SensorDashboard : UserControl
             if (readings != null)
                 _telemetry.AddRange(readings);
 
+            UpdateDashboard();
+
             StatusText.Text =
                 $"{_sensors.Count} sensor(s) registered | " +
                 $"{_telemetry.Count} telemetry reading(s)";
-
-            UpdateDashboard();
         }
         catch (HttpRequestException)
         {
@@ -157,9 +149,7 @@ public partial class SensorDashboard : UserControl
         catch (TaskCanceledException)
         {
             ConnectionStatusText.Text = "TIMEOUT";
-            StatusText.Text =
-                "The telemetry request timed out.";
-
+            StatusText.Text = "The telemetry request timed out.";
             UpdateDashboard();
         }
         catch (Exception ex)
@@ -170,34 +160,19 @@ public partial class SensorDashboard : UserControl
         }
     }
 
-    #endregion
-
-    #region Dashboard Data
-
-    // Updates the statistics and current sensor information.
     private void UpdateDashboard()
     {
         var sensorCount = _sensors.Count;
 
         var environmentalCount = _sensors.Count(sensor =>
-            string.Equals(
-                sensor.Category,
-                "Environmental",
-                StringComparison.OrdinalIgnoreCase));
+            IsEnvironmentalCategory(sensor.Category));
 
         var powerCount = _sensors.Count(sensor =>
-            string.Equals(
-                sensor.Category,
-                "Power Consumption",
-                StringComparison.OrdinalIgnoreCase));
+            IsPowerCategory(sensor.Category));
 
         var actuatorCount = _sensors.Count(sensor =>
-            string.Equals(
-                sensor.Category,
-                "Actuator",
-                StringComparison.OrdinalIgnoreCase));
+            IsActuatorCategory(sensor.Category));
 
-        // Only use telemetry belonging to registered sensors.
         var registeredMacs = _sensors
             .Where(sensor => !string.IsNullOrWhiteSpace(sensor.MacAddress))
             .Select(sensor => sensor.MacAddress.Trim())
@@ -211,13 +186,15 @@ public partial class SensorDashboard : UserControl
 
         var activeSensorCount = 0;
 
-        // Find the latest reading for each registered sensor.
         foreach (var sensor in _sensors)
         {
-            var macAddress = sensor.MacAddress.Trim();
+            sensor.Unit = ResolveUnit(sensor.Category);
+
+            var macAddress = sensor.MacAddress?.Trim();
 
             var latestReading = validTelemetry
                 .Where(reading =>
+                    !string.IsNullOrWhiteSpace(macAddress) &&
                     string.Equals(
                         reading.DeviceId?.Trim(),
                         macAddress,
@@ -234,12 +211,10 @@ public partial class SensorDashboard : UserControl
                 continue;
             }
 
-            var isActive = DateTimeService.IsRecent(
-                latestReading.Timestamp);
+            sensor.IsActive =
+                DateTimeService.IsRecent(latestReading.Timestamp);
 
-            sensor.IsActive = isActive;
-
-            if (isActive)
+            if (sensor.IsActive)
                 activeSensorCount++;
 
             sensor.CurrentDataText = FormatSensorValue(
@@ -252,11 +227,8 @@ public partial class SensorDashboard : UserControl
         }
 
         RegisteredSensorsText.Text = sensorCount.ToString();
-        ActiveSensorsText.Text = $"{activeSensorCount} ACTIVE";
-
-        var issues = sensorCount - activeSensorCount;
-        IssuesText.Text = issues.ToString();
-
+        ActiveSensorsText.Text = activeSensorCount.ToString();
+        IssuesText.Text = (sensorCount - activeSensorCount).ToString();
         NetworkActiveText.Text = activeSensorCount.ToString();
 
         if (sensorCount == 0)
@@ -288,21 +260,19 @@ public partial class SensorDashboard : UserControl
         UpdateTemperature(validTelemetry, environmentalCount);
         UpdatePower(validTelemetry, powerCount);
         UpdateLatestActivity(validTelemetry, sensorCount);
+        ApplyFilters();
 
-        SensorsItemsControl.IsVisible = sensorCount > 0;
+        SensorsItemsControl.IsVisible = _visibleSensors.Count > 0;
     }
 
-    // Updates the temperature information shown on the dashboard.
     private void UpdateTemperature(
         List<SensorReadingRecord> telemetry,
         int environmentalCount)
     {
         var readings = telemetry
             .Where(reading =>
-                string.Equals(
-                    reading.SensorCategory,
-                    "Environmental",
-                    StringComparison.OrdinalIgnoreCase))
+                ResolveUnit(GetRegisteredCategory(reading.DeviceId,
+                    reading.SensorCategory)) == "°C")
             .ToList();
 
         if (readings.Count == 0)
@@ -310,41 +280,27 @@ public partial class SensorDashboard : UserControl
             AverageTemperatureText.Text = "--";
             TemperatureStatusText.Text =
                 environmentalCount == 0
-                    ? "No environmental sensors"
-                    : "Waiting for readings";
+                    ? "No temperature sensors"
+                    : "No readings for a Temperature category";
 
             return;
         }
 
-        var averageTemperature = readings.Average(
-            reading => reading.Value);
+        var averageTemperature = readings.Average(reading => reading.Value);
 
-        var latest = readings
-            .OrderByDescending(reading =>
-                DateTimeService.EnsureUtc(reading.Timestamp))
-            .First();
-
-        AverageTemperatureText.Text =
-            $"{averageTemperature:F1}°C";
-
+        AverageTemperatureText.Text = $"{averageTemperature:F1}";
         TemperatureStatusText.Text =
-            $"{readings.Count} reading(s)";
-
-        LastUpdateText.Text =
-            FormatTimestamp(latest.Timestamp);
+            $"{readings.Count} temperature reading(s)";
     }
 
-    // Updates the total power usage shown on the dashboard.
     private void UpdatePower(
         List<SensorReadingRecord> telemetry,
         int powerCount)
     {
         var readings = telemetry
             .Where(reading =>
-                string.Equals(
-                    reading.SensorCategory,
-                    "Power Consumption",
-                    StringComparison.OrdinalIgnoreCase))
+                ResolveUnit(GetRegisteredCategory(reading.DeviceId,
+                    reading.SensorCategory)) == "W")
             .ToList();
 
         if (readings.Count == 0)
@@ -353,7 +309,7 @@ public partial class SensorDashboard : UserControl
             PowerStatusText.Text =
                 powerCount == 0
                     ? "No power sensors"
-                    : "Waiting for readings";
+                    : "No readings for a Power category";
 
             return;
         }
@@ -368,24 +324,13 @@ public partial class SensorDashboard : UserControl
                 .First())
             .ToList();
 
-        var totalPower = latestPowerPerSensor.Sum(
-            reading => reading.Value);
-
-        var latest = readings
-            .OrderByDescending(reading =>
-                DateTimeService.EnsureUtc(reading.Timestamp))
-            .First();
-
-        TotalPowerText.Text = $"{totalPower:F0} W";
+        TotalPowerText.Text =
+            $"{latestPowerPerSensor.Sum(reading => reading.Value):F0}";
 
         PowerStatusText.Text =
-            $"{latestPowerPerSensor.Count} active power sensor(s)";
-
-        LastUpdateText.Text =
-            FormatTimestamp(latest.Timestamp);
+            $"{latestPowerPerSensor.Count} power sensor(s)";
     }
 
-    // Shows the most recent telemetry activity.
     private void UpdateLatestActivity(
         List<SensorReadingRecord> telemetry,
         int sensorCount)
@@ -397,7 +342,7 @@ public partial class SensorDashboard : UserControl
                     ? "No sensors registered"
                     : "Waiting for sensor telemetry...";
 
-            LastUpdateText.Text = "--";
+            LastUpdateText.Text = "Last update: --";
             return;
         }
 
@@ -412,66 +357,279 @@ public partial class SensorDashboard : UserControl
                 latest.DeviceId?.Trim(),
                 StringComparison.OrdinalIgnoreCase));
 
+        var category = sensor?.Category ?? latest.SensorCategory;
         var sensorName = sensor?.NodeId ?? latest.DeviceId;
+        var value = FormatSensorValue(category, latest.Value);
+        var unit = ResolveUnit(category);
 
         LatestSensorActivityText.Text =
-            $"{sensorName} | " +
-            $"{latest.SensorCategory} | " +
-            $"{FormatSensorValue(
-                latest.SensorCategory,
-                latest.Value)}";
+            $"{sensorName} | {category} | {value}" +
+            (string.IsNullOrWhiteSpace(unit) ? "" : $" {unit}");
 
         LastUpdateText.Text =
-            FormatTimestamp(latest.Timestamp);
+            $"Last update: {FormatTimestamp(latest.Timestamp)}";
     }
 
-    #endregion
+    private string GetRegisteredCategory(
+        string? deviceId,
+        string? fallbackCategory)
+    {
+        var sensor = _sensors.FirstOrDefault(item =>
+            string.Equals(
+                item.MacAddress?.Trim(),
+                deviceId?.Trim(),
+                StringComparison.OrdinalIgnoreCase));
 
-    #region Formatting
+        return sensor?.Category ?? fallbackCategory ?? "";
+    }
 
-    // Formats a reading based on the sensor category.
+    private static string ResolveUnit(string? category)
+    {
+        var normalized = NormalizeCategory(category);
+
+        return normalized switch
+        {
+            "temperature" or
+            "temperature sensor" or
+            "air temperature" or
+            "water temperature" or
+            "soil temperature" => "°C",
+
+            "humidity" or
+            "relative humidity" or
+            "air humidity" => "%RH",
+
+            "soil moisture" or
+            "moisture" => "%",
+
+            "co2" or
+            "carbon dioxide" => "ppm",
+
+            "pressure" or
+            "air pressure" or
+            "atmospheric pressure" => "hPa",
+
+            "wind speed" => "m/s",
+            "wind direction" => "°",
+
+            "rainfall" or
+            "rain gauge" => "mm",
+
+            "light level" or
+            "illuminance" => "lx",
+
+            "voltage" => "V",
+            "current" => "A",
+
+            "power" or
+            "power consumption" or
+            "active power" => "W",
+
+            "energy" or
+            "energy consumption" => "kWh",
+
+            "water flow" or
+            "flow rate" => "L/min",
+
+            "distance" => "m",
+            "battery level" => "%",
+
+            _ => ""
+        };
+    }
+
+    private static string NormalizeCategory(string? category)
+    {
+        return (category ?? "")
+            .Trim()
+            .ToLowerInvariant()
+            .Replace("_", " ")
+            .Replace("-", " ")
+            .Replace("  ", " ");
+    }
+
+    private static bool IsEnvironmentalCategory(string? category)
+    {
+        var normalized = NormalizeCategory(category);
+
+        return normalized is
+            "environmental" or
+            "temperature" or
+            "temperature sensor" or
+            "air temperature" or
+            "water temperature" or
+            "soil temperature" or
+            "humidity" or
+            "relative humidity" or
+            "air humidity" or
+            "soil moisture" or
+            "moisture" or
+            "co2" or
+            "carbon dioxide" or
+            "pressure" or
+            "air pressure" or
+            "atmospheric pressure" or
+            "wind speed" or
+            "wind direction" or
+            "rainfall" or
+            "rain gauge" or
+            "light level" or
+            "illuminance";
+    }
+
+    private static bool IsPowerCategory(string? category)
+    {
+        var normalized = NormalizeCategory(category);
+
+        return normalized is
+            "power" or
+            "power consumption" or
+            "active power" or
+            "voltage" or
+            "current" or
+            "energy" or
+            "energy consumption";
+    }
+
+    private static bool IsActuatorCategory(string? category)
+    {
+        return NormalizeCategory(category) is
+            "actuator" or
+            "relay" or
+            "smart relay" or
+            "water pump" or
+            "pump";
+    }
+
     private static string FormatSensorValue(
-        string category,
+        string? category,
         double value)
     {
-        if (string.Equals(
-            category,
-            "Environmental",
-            StringComparison.OrdinalIgnoreCase))
-        {
-            return $"{value:F1} °C";
-        }
+        var normalized = NormalizeCategory(category);
 
-        if (string.Equals(
-            category,
-            "Power Consumption",
-            StringComparison.OrdinalIgnoreCase))
-        {
-            return $"{value:F0} W";
-        }
-
-        if (string.Equals(
-            category,
-            "Actuator",
-            StringComparison.OrdinalIgnoreCase))
-        {
+        if (IsActuatorCategory(normalized))
             return value != 0 ? "ON" : "OFF";
-        }
 
-        return value.ToString("F2");
+        return ResolveUnit(category) switch
+        {
+            "°C" => value.ToString("F1"),
+            "%RH" => value.ToString("F1"),
+            "%" => value.ToString("F1"),
+            "ppm" => value.ToString("F0"),
+            "hPa" => value.ToString("F1"),
+            "m/s" => value.ToString("F1"),
+            "°" => value.ToString("F0"),
+            "mm" => value.ToString("F1"),
+            "lx" => value.ToString("F0"),
+            "V" => value.ToString("F2"),
+            "A" => value.ToString("F2"),
+            "W" => value.ToString("F1"),
+            "kWh" => value.ToString("F2"),
+            "L/min" => value.ToString("F2"),
+            "m" => value.ToString("F2"),
+            _ => value.ToString("F2")
+        };
     }
 
-    // Formats a timestamp for display.
     private static string FormatTimestamp(DateTime timestamp)
     {
         return DateTimeService.FormatLocalTime(timestamp);
     }
 
-    #endregion
+    private void SensorSearchBox_TextChanged(
+        object? sender,
+        TextChangedEventArgs e)
+    {
+        ApplyFilters();
+    }
 
-    #region Buttons
+    private void Filter_SelectionChanged(
+        object? sender,
+        SelectionChangedEventArgs e)
+    {
+        ApplyFilters();
+    }
 
-    // Manually refreshes the dashboard.
+    private void ApplyFilters()
+    {
+        var search = SensorSearchBox?.Text?.Trim() ?? "";
+        var selectedCategory = GetSelectedContent(CategoryFilter);
+        var selectedStatus = GetSelectedContent(StatusFilter);
+
+        var filtered = _sensors.Where(sensor =>
+        {
+            var matchesSearch =
+                string.IsNullOrWhiteSpace(search) ||
+                Contains(sensor.NodeId, search) ||
+                Contains(sensor.Location, search) ||
+                Contains(sensor.Category, search) ||
+                Contains(sensor.MacAddress, search);
+
+            var matchesCategory =
+                selectedCategory == "All categories" ||
+                MatchesCategoryFilter(sensor.Category, selectedCategory);
+
+            var matchesStatus = selectedStatus switch
+            {
+                "Online" => sensor.IsActive,
+                "Offline" => !sensor.IsActive,
+                "Issue" => !sensor.IsActive,
+                _ => true
+            };
+
+            return matchesSearch && matchesCategory && matchesStatus;
+        }).ToList();
+
+        _visibleSensors.Clear();
+
+        foreach (var sensor in filtered)
+            _visibleSensors.Add(sensor);
+
+        SensorsItemsControl.IsVisible = _visibleSensors.Count > 0;
+
+        if (_sensors.Count == 0)
+        {
+            StatusText.Text = "No sensors registered.";
+        }
+        else
+        {
+            StatusText.Text =
+                $"{_visibleSensors.Count} of {_sensors.Count} sensor(s) shown | " +
+                $"{_telemetry.Count} telemetry reading(s)";
+        }
+    }
+
+    private static string GetSelectedContent(ComboBox? comboBox)
+    {
+        if (comboBox?.SelectedItem is ComboBoxItem item)
+            return item.Content?.ToString() ?? "";
+
+        return "";
+    }
+
+    private static bool Contains(string? source, string search)
+    {
+        return !string.IsNullOrWhiteSpace(source) &&
+               source.Contains(search, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool MatchesCategoryFilter(
+        string? category,
+        string selectedCategory)
+    {
+        return selectedCategory switch
+        {
+            "Environmental" => IsEnvironmentalCategory(category),
+            "Power" => IsPowerCategory(category),
+            "Actuator" => IsActuatorCategory(category),
+            "Other" =>
+                !IsEnvironmentalCategory(category) &&
+                !IsPowerCategory(category) &&
+                !IsActuatorCategory(category),
+            _ => true
+        };
+    }
+
     private async void RefreshButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -495,7 +653,13 @@ public partial class SensorDashboard : UserControl
         await RefreshDashboardAsync();
     }
 
-    // Returns to the previous page.
+    private void ManageCategoriesButton_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        ManageCategoriesRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     private void BackButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -503,7 +667,6 @@ public partial class SensorDashboard : UserControl
         BackRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    // Opens the add location page.
     private void AddLocationButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -511,7 +674,6 @@ public partial class SensorDashboard : UserControl
         AddLocationRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    // Opens the add sensor page.
     private void AddSensorButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -519,11 +681,6 @@ public partial class SensorDashboard : UserControl
         AddSensorRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    #endregion
-
-    #region Sensor Details
-
-    // Opens the details page for a sensor.
     private void SensorDetailsButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -534,7 +691,4 @@ public partial class SensorDashboard : UserControl
             SensorDetailsRequested?.Invoke(this, sensor);
         }
     }
-
-    #endregion
 }
-

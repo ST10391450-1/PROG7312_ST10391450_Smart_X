@@ -1,5 +1,6 @@
 <UserControl
     xmlns="https://github.com/avaloniaui"
+    xmlns:models="using:Smart_X_UI.Models"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     x:Class="Smart_X_UI.Pages.SensorAdd">
 
@@ -193,14 +194,18 @@
                         <TextBlock Text="CATEGORY"
                                    Classes="label"/>
 
-                        <ComboBox x:Name="CategoryComboBox"
-                                  PlaceholderText="Select sensor category">
 
-                            <ComboBoxItem Content="Environmental"/>
-                            <ComboBoxItem Content="Power Consumption"/>
-                            <ComboBoxItem Content="Actuator"/>
-
+                        <ComboBox
+                            x:Name="CategoryComboBox"
+                            PlaceholderText="Select sensor category"
+                            IsEnabled="False">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="models:SensorCategory">
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
                         </ComboBox>
+
 
                         <TextBlock x:Name="CategoryErrorText"
                                    Text="Select a sensor category."

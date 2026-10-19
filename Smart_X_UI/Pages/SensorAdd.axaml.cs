@@ -1,4 +1,5 @@
-﻿using Avalonia.Controls;
+﻿
+using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Smart_X_UI.Models;
@@ -12,48 +13,35 @@ namespace Smart_X_UI.Pages;
 
 public partial class SensorAdd : UserControl
 {
-    #region Fields
-
     private readonly SensorService _sensorService =
         new(ApiClient.HttpClient);
 
     private readonly LocationService _locationService =
         new(ApiClient.HttpClient);
 
-    private static readonly Regex MacAddressRegex =
-        new(
-            @"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$",
-            RegexOptions.Compiled);
+    private readonly SensorCategoryService _categoryService =
+        new(ApiClient.HttpClient);
 
-    #endregion
-
-    #region Events
+    private static readonly Regex MacAddressRegex = new(
+        @"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$",
+        RegexOptions.Compiled);
 
     public event EventHandler<SensorRegistration>? SensorRegistered;
     public event EventHandler? BackRequested;
-
-    #endregion
-
-    #region Constructor
 
     public SensorAdd()
     {
         InitializeComponent();
 
         _ = LoadLocationsAsync();
+        _ = LoadCategoriesAsync();
     }
 
-    #endregion
-
-    #region Locations
-
-    // Loads the available deployment locations.
     private async Task LoadLocationsAsync()
     {
         try
         {
             var locations = await _locationService.GetLocationsAsync();
-
             LocationComboBox.ItemsSource = locations;
         }
         catch
@@ -62,11 +50,53 @@ public partial class SensorAdd : UserControl
         }
     }
 
-    #endregion
+    private async Task LoadCategoriesAsync()
+    {
+        CategoryComboBox.IsEnabled = false;
 
-    #region Sensor Registration
+        try
+        {
+            var categories = await _categoryService.GetAllAsync();
 
-    // Validates and registers the sensor with the API.
+            CategoryComboBox.ItemsSource = categories;
+            CategoryComboBox.SelectedItem = null;
+            CategoryErrorText.IsVisible = false;
+
+            if (categories.Count == 0)
+            {
+                RegistrationStatusText.Text =
+                    "No categories are available. Create a category using Manage Categories first.";
+
+                RegistrationStatusText.Foreground = Brushes.Goldenrod;
+                RegistrationStatusText.IsVisible = true;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            CategoryComboBox.ItemsSource = Array.Empty<SensorCategory>();
+
+            RegistrationStatusText.Text =
+                $"Could not load categories from the API.\n\n{ex.Message}";
+
+            RegistrationStatusText.Foreground = Brushes.OrangeRed;
+            RegistrationStatusText.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            CategoryComboBox.ItemsSource = Array.Empty<SensorCategory>();
+
+            RegistrationStatusText.Text =
+                $"Could not load categories: {ex.Message}";
+
+            RegistrationStatusText.Foreground = Brushes.OrangeRed;
+            RegistrationStatusText.IsVisible = true;
+        }
+        finally
+        {
+            CategoryComboBox.IsEnabled = true;
+        }
+    }
+
     private async void RegisterSensorButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -78,15 +108,22 @@ public partial class SensorAdd : UserControl
 
         try
         {
+            var selectedCategory =
+                CategoryComboBox.SelectedItem as SensorCategory;
+
+            if (selectedCategory is null)
+            {
+                CategoryErrorText.IsVisible = true;
+                return;
+            }
+
             var sensor = new SensorRegistration
             {
                 MacAddress = MacAddressTextBox.Text!.Trim(),
                 NodeId = NodeIdTextBox.Text!.Trim(),
-                Category =
-                    ((ComboBoxItem)CategoryComboBox.SelectedItem!)
-                    .Content?.ToString() ?? string.Empty,
-                Location =
-                    LocationComboBox.SelectedItem?.ToString() ?? string.Empty
+                Category = selectedCategory.Name,
+                Location = LocationComboBox.SelectedItem?.ToString()
+                           ?? string.Empty
             };
 
             var registeredSensor =
@@ -122,11 +159,6 @@ public partial class SensorAdd : UserControl
         }
     }
 
-    #endregion
-
-    #region Validation
-
-    // Checks that all required sensor details are valid.
     private bool ValidateForm()
     {
         var valid = true;
@@ -141,9 +173,7 @@ public partial class SensorAdd : UserControl
         }
         else
         {
-            MacAddressTextBox.ClearValue(
-                Border.BorderBrushProperty);
-
+            MacAddressTextBox.ClearValue(Border.BorderBrushProperty);
             MacAddressErrorText.IsVisible = false;
         }
 
@@ -157,13 +187,11 @@ public partial class SensorAdd : UserControl
         }
         else
         {
-            NodeIdTextBox.ClearValue(
-                Border.BorderBrushProperty);
-
+            NodeIdTextBox.ClearValue(Border.BorderBrushProperty);
             NodeIdErrorText.IsVisible = false;
         }
 
-        if (CategoryComboBox.SelectedItem is not ComboBoxItem)
+        if (CategoryComboBox.SelectedItem is not SensorCategory)
         {
             CategoryErrorText.IsVisible = true;
             valid = false;
@@ -186,18 +214,15 @@ public partial class SensorAdd : UserControl
         return valid;
     }
 
-    // Shows validation errors while entering the MAC address.
     private void MacAddressTextBox_TextChanged(
         object? sender,
         TextChangedEventArgs e)
     {
         MacAddressErrorText.IsVisible =
             !string.IsNullOrWhiteSpace(MacAddressTextBox.Text) &&
-            !MacAddressRegex.IsMatch(
-                MacAddressTextBox.Text.Trim());
+            !MacAddressRegex.IsMatch(MacAddressTextBox.Text.Trim());
     }
 
-    // Shows a validation error when the node ID is empty.
     private void NodeIdTextBox_TextChanged(
         object? sender,
         TextChangedEventArgs e)
@@ -206,11 +231,13 @@ public partial class SensorAdd : UserControl
             string.IsNullOrWhiteSpace(NodeIdTextBox.Text);
     }
 
-    #endregion
+    private async void RefreshCategoriesButton_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        await LoadCategoriesAsync();
+    }
 
-    #region Form
-
-    // Clears the form when the user presses the Clear button.
     private void ClearButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -230,27 +257,17 @@ public partial class SensorAdd : UserControl
         CategoryErrorText.IsVisible = false;
         LocationErrorText.IsVisible = false;
 
-        MacAddressTextBox.ClearValue(
-            Border.BorderBrushProperty);
-
-        NodeIdTextBox.ClearValue(
-            Border.BorderBrushProperty);
+        MacAddressTextBox.ClearValue(Border.BorderBrushProperty);
+        NodeIdTextBox.ClearValue(Border.BorderBrushProperty);
 
         RegistrationStatusText.IsVisible = false;
         RegistrationStatusText.Text = string.Empty;
     }
 
-    #endregion
-
-    #region Navigation
-
-    // Returns to the sensor dashboard.
     private void BackButton_Click(
         object? sender,
         RoutedEventArgs e)
     {
         BackRequested?.Invoke(this, EventArgs.Empty);
     }
-
-    #endregion
 }

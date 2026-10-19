@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Smart_X_UI": {
+      "commandName": "Project"
+    },
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    }
+  }
+}

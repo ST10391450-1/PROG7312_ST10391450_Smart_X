@@ -14,6 +14,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Smart_X_UI.Pages;
@@ -28,10 +29,27 @@ public partial class SensorDetails : UserControl
     private readonly DispatcherTimer _telemetryTimer;
 
     private bool _loadingTelemetry;
+    private bool _loadingUnit;
+    private bool _unitLoaded;
+    private string _unitCategory = string.Empty;
+    private string _unit = string.Empty;
 
     public event EventHandler? BackRequested;
 
-    // Required by the Avalonia XAML loader.
+    private sealed class UnitDetectionRequest
+    {
+        public string SensorName { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+    }
+
+    private sealed class UnitDetectionResponse
+    {
+        public string? Unit { get; set; }
+        public string? Type { get; set; }
+        public string? DeterminedBy { get; set; }
+        public bool RequiresConfiguration { get; set; }
+    }
+
     public SensorDetails()
         : this(new SensorRegistration())
     {
@@ -59,7 +77,6 @@ public partial class SensorDetails : UserControl
         _telemetryTimer.Start();
     }
 
-    // Loads the sensor information shown on the page.
     private void LoadSensorDetails()
     {
         HeaderNodeIdText.Text = _sensor.NodeId;
@@ -80,6 +97,10 @@ public partial class SensorDetails : UserControl
         TelemetryStatusText.Foreground = Brushes.Orange;
         TelemetryValueText.Text = "N/A";
         TelemetryTimestampText.Text = "N/A";
+
+        UnitText.Text = "Loading...";
+        UnitSourceText.Text = "Smart X API";
+        TelemetryUnitText.Text = string.Empty;
     }
 
     private async void TelemetryTimer_Tick(object? sender, EventArgs e)
@@ -87,7 +108,6 @@ public partial class SensorDetails : UserControl
         await LoadCurrentTelemetryAsync();
     }
 
-    // Gets the latest telemetry reading for the sensor.
     private async Task LoadCurrentTelemetryAsync()
     {
         if (_loadingTelemetry)
@@ -129,6 +149,11 @@ public partial class SensorDetails : UserControl
                 return;
             }
 
+            await EnsureUnitAsync(
+                string.IsNullOrWhiteSpace(latestReading.SensorCategory)
+                    ? _sensor.Category
+                    : latestReading.SensorCategory);
+
             DisplayTelemetry(latestReading);
         }
         catch (HttpRequestException)
@@ -142,7 +167,6 @@ public partial class SensorDetails : UserControl
         catch (Exception ex)
         {
             SetConnectionErrorState("ERROR");
-
             ShowActionStatus(
                 $"Could not retrieve telemetry: {ex.Message}",
                 false);
@@ -153,7 +177,121 @@ public partial class SensorDetails : UserControl
         }
     }
 
-    // Updates the telemetry information shown on screen.
+    private async Task EnsureUnitAsync(string? category)
+    {
+        var requestedCategory = category?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(requestedCategory))
+        {
+            _unit = string.Empty;
+            _unitCategory = string.Empty;
+            _unitLoaded = true;
+
+            UnitText.Text = "Not configured";
+            UnitSourceText.Text = "Category unavailable";
+            TelemetryUnitText.Text = string.Empty;
+            return;
+        }
+
+        if (_unitLoaded &&
+            string.Equals(
+                _unitCategory,
+                requestedCategory,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (_loadingUnit)
+            return;
+
+        _loadingUnit = true;
+
+        try
+        {
+            using var response = await ApiClient.HttpClient.PostAsJsonAsync(
+                "api/UnitDetection/detect",
+                new UnitDetectionRequest
+                {
+                    SensorName = string.Empty,
+                    Category = requestedCategory
+                });
+
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content
+                .ReadFromJsonAsync<UnitDetectionResponse>();
+
+            if (result == null)
+            {
+                _unit = string.Empty;
+                UnitText.Text = "Not configured";
+                UnitSourceText.Text = "No API result";
+                TelemetryUnitText.Text = string.Empty;
+            }
+            else
+            {
+                _unit = result.Unit?.Trim() ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(_unit))
+                {
+                    UnitText.Text = result.RequiresConfiguration
+                        ? "Configuration required"
+                        : "Not configured";
+
+                    TelemetryUnitText.Text = string.Empty;
+                }
+                else
+                {
+                    UnitText.Text = _unit;
+                    TelemetryUnitText.Text = _unit;
+                }
+
+                UnitSourceText.Text =
+                    string.IsNullOrWhiteSpace(result.DeterminedBy)
+                        ? "Smart X API"
+                        : result.DeterminedBy;
+            }
+
+            _unitCategory = requestedCategory;
+            _unitLoaded = true;
+        }
+        catch (HttpRequestException)
+        {
+            _unit = string.Empty;
+            _unitCategory = requestedCategory;
+            _unitLoaded = false;
+
+            UnitText.Text = "Unavailable";
+            UnitSourceText.Text = "API connection failed";
+            TelemetryUnitText.Text = string.Empty;
+        }
+        catch (TaskCanceledException)
+        {
+            _unit = string.Empty;
+            _unitCategory = requestedCategory;
+            _unitLoaded = false;
+
+            UnitText.Text = "Unavailable";
+            UnitSourceText.Text = "API request timed out";
+            TelemetryUnitText.Text = string.Empty;
+        }
+        catch (JsonException)
+        {
+            _unit = string.Empty;
+            _unitCategory = requestedCategory;
+            _unitLoaded = false;
+
+            UnitText.Text = "Unavailable";
+            UnitSourceText.Text = "Invalid API response";
+            TelemetryUnitText.Text = string.Empty;
+        }
+        finally
+        {
+            _loadingUnit = false;
+        }
+    }
+
     private void DisplayTelemetry(SensorReadingRecord reading)
     {
         var isCurrent = DateTimeService.IsRecent(reading.Timestamp);
@@ -184,6 +322,11 @@ public partial class SensorDetails : UserControl
         TelemetryValueText.Text =
             FormatTelemetryValue(reading.Value, reading.SensorCategory);
 
+        TelemetryUnitText.Text =
+            IsActuatorCategory(reading.SensorCategory)
+                ? string.Empty
+                : _unit;
+
         TelemetryTimestampText.Text = DateTimeService
             .EnsureUtc(reading.Timestamp)
             .ToLocalTime()
@@ -201,6 +344,7 @@ public partial class SensorDetails : UserControl
         TelemetryStatusText.Text = "NO DATA";
         TelemetryStatusText.Foreground = Brushes.Orange;
         TelemetryValueText.Text = "N/A";
+        TelemetryUnitText.Text = string.Empty;
         TelemetryTimestampText.Text = "N/A";
 
         ShowActionStatus(message, false);
@@ -245,41 +389,26 @@ public partial class SensorDetails : UserControl
             Color.FromArgb(alpha, red, green, blue));
     }
 
-    // Formats the telemetry value according to its sensor category.
     private static string FormatTelemetryValue(
         double value,
         string category)
     {
-        if (string.Equals(
-            category,
-            "Environmental",
-            StringComparison.OrdinalIgnoreCase))
-        {
-            return $"{value:F1} °C";
-        }
-
-        if (string.Equals(
-            category,
-            "Power Consumption",
-            StringComparison.OrdinalIgnoreCase))
-        {
-            return $"{value:F0} W";
-        }
-
-        if (string.Equals(
-            category,
-            "Actuator",
-            StringComparison.OrdinalIgnoreCase))
-        {
+        if (IsActuatorCategory(category))
             return value >= 0.5 ? "ON" : "OFF";
-        }
 
         return value % 1 == 0
             ? value.ToString("F0")
             : value.ToString("F2");
     }
 
-    // Loads all attachments for the sensor.
+    private static bool IsActuatorCategory(string? category)
+    {
+        return string.Equals(
+            category?.Trim(),
+            "Actuator",
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task LoadAttachmentsAsync()
     {
         try
@@ -292,9 +421,7 @@ public partial class SensorDetails : UserControl
             _attachments.Clear();
 
             foreach (var attachment in attachments)
-            {
                 _attachments.Add(attachment);
-            }
 
             if (_attachments.Count == 0)
             {
@@ -515,7 +642,6 @@ public partial class SensorDetails : UserControl
         RoutedEventArgs e)
     {
         _telemetryTimer.Stop();
-
         BackRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -523,7 +649,6 @@ public partial class SensorDetails : UserControl
         VisualTreeAttachmentEventArgs e)
     {
         _telemetryTimer.Stop();
-
         base.OnDetachedFromVisualTree(e);
     }
 }
