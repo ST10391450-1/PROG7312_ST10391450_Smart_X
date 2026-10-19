@@ -1,4 +1,5 @@
 ﻿
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -48,13 +49,39 @@ public partial class SensorDashboard : UserControl
         };
 
         _refreshTimer.Tick += RefreshTimer_Tick;
+
+        AttachedToVisualTree += Dashboard_AttachedToVisualTree;
+        DetachedFromVisualTree += Dashboard_DetachedFromVisualTree;
+    }
+
+    private bool _isAttached;
+
+    private void Dashboard_AttachedToVisualTree(
+        object? sender,
+        VisualTreeAttachmentEventArgs e)
+    {
+        if (_isAttached)
+            return;
+
+        _isAttached = true;
         _refreshTimer.Start();
 
         _ = RefreshDashboardAsync();
     }
 
+    private void Dashboard_DetachedFromVisualTree(
+        object? sender,
+        VisualTreeAttachmentEventArgs e)
+    {
+        _isAttached = false;
+        _refreshTimer.Stop();
+    }
+
     private async void RefreshTimer_Tick(object? sender, EventArgs e)
     {
+        if (!_isAttached || _refreshing)
+            return;
+
         await RefreshDashboardAsync();
     }
 
