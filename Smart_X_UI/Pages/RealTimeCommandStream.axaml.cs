@@ -1,7 +1,7 @@
-﻿using Avalonia;
+﻿
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -9,12 +9,14 @@ using Smart_X_UI.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Smart_X_UI.Pages;
@@ -28,6 +30,7 @@ public partial class RealTimeCommandStream : UserControl
     private readonly ObservableCollection<DeviceRow> _filteredDevices = new();
     private readonly ObservableCollection<HistoryRow> _history = new();
     private readonly ObservableCollection<HistoryRow> _filteredHistory = new();
+    private readonly Stack<CommandUndoEntry> _commandUndoStack = new();
 
     private readonly DispatcherTimer _refreshTimer = new()
     {
@@ -37,6 +40,7 @@ public partial class RealTimeCommandStream : UserControl
     private bool _isLoading;
     private bool _isFiltering;
     private bool _categoriesLoaded;
+    private bool _isUndoing;
 
     public RealTimeCommandStream()
     {
@@ -47,6 +51,8 @@ public partial class RealTimeCommandStream : UserControl
         DisconnectedList.ItemsSource = _disconnected;
         DevicesItemsControl.ItemsSource = _filteredDevices;
         HistoryItemsControl.ItemsSource = _filteredHistory;
+
+        UpdateUndoButtonState();
 
         _refreshTimer.Tick += RefreshTimer_Tick;
         AttachedToVisualTree += OnAttachedToVisualTree;
@@ -98,7 +104,7 @@ public partial class RealTimeCommandStream : UserControl
             OnlineDevicesValue.Text = _devices.Count(x => x.IsEnabled).ToString();
 
             CommandsTodayValue.Text = _history.Count(x =>
-                DateTime.TryParse(x.CreatedAt, out var createdAt) &&
+                DateTime.TryParse(x.CreatedAt, CultureInfo.CurrentCulture, out var createdAt) &&
                 createdAt.Date == DateTime.Today).ToString();
 
             DeviceCountText.Text = $"{_filteredDevices.Count} devices";
@@ -121,6 +127,8 @@ public partial class RealTimeCommandStream : UserControl
     {
         try
         {
+            var telemetryByDevice = await LoadLatestTelemetryAsync();
+
             using var response = await ApiClient.HttpClient.GetAsync("api/Sensors");
 
             if (!response.IsSuccessStatusCode)
@@ -150,16 +158,16 @@ public partial class RealTimeCommandStream : UserControl
                 if (item is not JsonObject sensor)
                     continue;
 
-                var nodeId = ReadString(sensor, "nodeId", "NodeId");
+                var nodeId = ReadString(sensor, "nodeId", "NodeId", "deviceId", "DeviceId");
                 var macAddress = ReadString(sensor, "macAddress", "MacAddress");
-                var category = ReadString(sensor, "category", "Category");
+                var category = ReadString(sensor, "category", "Category", "sensorCategory", "SensorCategory");
                 var location = ReadString(sensor, "location", "Location");
 
                 var hasEnabledValue =
-                    sensor.ContainsKey("isEnabled") ||
-                    sensor.ContainsKey("IsEnabled");
+                    HasProperty(sensor, "isEnabled", "IsEnabled") ||
+                    HasProperty(sensor, "isActive", "IsActive");
 
-                var isEnabled = ReadBool(sensor, "isEnabled", "IsEnabled");
+                var isEnabled = ReadBool(sensor, "isEnabled", "IsEnabled", "isActive", "IsActive");
 
                 var displayName = !string.IsNullOrWhiteSpace(nodeId)
                     ? nodeId
@@ -171,13 +179,67 @@ public partial class RealTimeCommandStream : UserControl
                     ? "Status unavailable"
                     : isEnabled ? "Enabled" : "Disabled";
 
+                var telemetry = FindTelemetry(telemetryByDevice, nodeId, macAddress);
+
+                var latestValue = telemetry?.Value ?? string.Empty;
+                var latestTimestamp = telemetry?.Timestamp ?? string.Empty;
+                var unit = telemetry?.Unit ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(latestValue))
+                {
+                    latestValue = ReadString(
+                        sensor,
+                        "latestValue", "LatestValue",
+                        "sensorValue", "SensorValue",
+                        "readingValue", "ReadingValue",
+                        "lastReading", "LastReading",
+                        "value", "Value",
+                        "temperature", "Temperature",
+                        "moisture", "Moisture",
+                        "humidity", "Humidity");
+                }
+
+                if (string.IsNullOrWhiteSpace(latestTimestamp))
+                {
+                    latestTimestamp = ReadString(
+                        sensor,
+                        "latestTimestamp", "LatestTimestamp",
+                        "lastSeen", "LastSeen",
+                        "lastReadingAt", "LastReadingAt",
+                        "timestamp", "Timestamp",
+                        "recordedAt", "RecordedAt",
+                        "createdAt", "CreatedAt",
+                        "receivedAt", "ReceivedAt");
+                }
+
+                if (string.IsNullOrWhiteSpace(unit))
+                {
+                    unit = ReadString(sensor, "unit", "Unit", "measurementUnit", "MeasurementUnit");
+                }
+
+                if (string.IsNullOrWhiteSpace(latestValue))
+                {
+                    latestValue = "No telemetry available";
+                }
+                else if (!string.IsNullOrWhiteSpace(unit) &&
+                         !latestValue.EndsWith(unit, StringComparison.OrdinalIgnoreCase))
+                {
+                    latestValue = $"{latestValue} {unit}";
+                }
+
+                latestTimestamp = FormatTelemetryTimestamp(latestTimestamp);
+
                 _devices.Add(new DeviceRow
                 {
                     NodeId = nodeId,
                     DisplayName = displayName,
                     MacAddress = macAddress,
-                    Category = string.IsNullOrWhiteSpace(category) ? "Uncategorised" : category,
-                    Location = string.IsNullOrWhiteSpace(location) ? "No location" : location,
+                    Category = string.IsNullOrWhiteSpace(category)
+                        ? "Uncategorised"
+                        : category,
+                    Location = string.IsNullOrWhiteSpace(location)
+                        ? "No location"
+                        : location,
                     IsEnabled = hasEnabledValue && isEnabled,
                     StateText = state,
                     StateBackground = !hasEnabledValue
@@ -186,8 +248,8 @@ public partial class RealTimeCommandStream : UserControl
                     StateForeground = !hasEnabledValue
                         ? "#DCE7ED"
                         : isEnabled ? "#8BF0B0" : "#FF9CA5",
-                    LatestValue = "No telemetry available",
-                    LatestTimestamp = "No reading recorded",
+                    LatestValue = latestValue,
+                    LatestTimestamp = latestTimestamp,
                     EnableDisableLabel = !hasEnabledValue
                         ? "Status unavailable"
                         : isEnabled ? "Disable" : "Enable"
@@ -209,24 +271,211 @@ public partial class RealTimeCommandStream : UserControl
         }
         catch (JsonException)
         {
-            DeviceMessageText.Text = "The sensor API returned invalid JSON.";
+            DeviceMessageText.Text = "The sensor or telemetry API returned invalid JSON.";
             DeviceMessageText.IsVisible = true;
         }
         catch (HttpRequestException ex)
         {
-            DeviceMessageText.Text = $"Could not reach the sensor API: {ex.Message}";
+            DeviceMessageText.Text = $"Could not reach the sensor or telemetry API: {ex.Message}";
             DeviceMessageText.IsVisible = true;
         }
         catch (TaskCanceledException)
         {
-            DeviceMessageText.Text = "The sensor API request timed out.";
+            DeviceMessageText.Text = "The sensor or telemetry API request timed out.";
             DeviceMessageText.IsVisible = true;
         }
         catch (Exception ex)
         {
-            DeviceMessageText.Text = $"Could not load sensors: {ex.Message}";
+            DeviceMessageText.Text = $"Could not load devices: {ex.Message}";
             DeviceMessageText.IsVisible = true;
         }
+    }
+
+    private async Task<Dictionary<string, TelemetryRow>> LoadLatestTelemetryAsync()
+    {
+        var latestByDevice = new Dictionary<string, TelemetryRow>(
+            StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            using var response = await ApiClient.HttpClient.GetAsync("api/Telemetry");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                DeviceMessageText.Text =
+                    $"Telemetry request failed: HTTP {(int)response.StatusCode}. Device registrations will still be loaded.";
+                DeviceMessageText.IsVisible = true;
+                return latestByDevice;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(json))
+                return latestByDevice;
+
+            var root = JsonNode.Parse(json);
+            var items = GetArray(
+                root,
+                "telemetry",
+                "readings",
+                "measurements",
+                "items",
+                "data",
+                "results",
+                "value");
+
+            if (items == null)
+            {
+                if (root is JsonObject singleReading &&
+                    HasProperty(singleReading, "deviceId", "DeviceId", "nodeId", "NodeId"))
+                {
+                    AddTelemetryReading(latestByDevice, singleReading);
+                }
+
+                return latestByDevice;
+            }
+
+            foreach (var item in items)
+            {
+                if (item is JsonObject reading)
+                    AddTelemetryReading(latestByDevice, reading);
+            }
+        }
+        catch (HttpRequestException)
+        {
+            DeviceMessageText.Text =
+                "Telemetry could not be reached. Registered devices will still be loaded.";
+            DeviceMessageText.IsVisible = true;
+        }
+        catch (TaskCanceledException)
+        {
+            DeviceMessageText.Text =
+                "The telemetry request timed out. Registered devices will still be loaded.";
+            DeviceMessageText.IsVisible = true;
+        }
+        catch (JsonException)
+        {
+            DeviceMessageText.Text =
+                "The telemetry API returned invalid JSON. Registered devices will still be loaded.";
+            DeviceMessageText.IsVisible = true;
+        }
+
+        return latestByDevice;
+    }
+
+    private static void AddTelemetryReading(
+        Dictionary<string, TelemetryRow> latestByDevice,
+        JsonObject reading)
+    {
+        var deviceId = ReadString(
+            reading,
+            "deviceId", "DeviceId",
+            "nodeId", "NodeId",
+            "macAddress", "MacAddress");
+
+        if (string.IsNullOrWhiteSpace(deviceId))
+            return;
+
+        var value = ReadString(
+            reading,
+            "value", "Value",
+            "reading", "Reading",
+            "sensorValue", "SensorValue",
+            "measurement", "Measurement",
+            "temperature", "Temperature",
+            "moisture", "Moisture",
+            "humidity", "Humidity");
+
+        var timestamp = ReadString(
+            reading,
+            "timestamp", "Timestamp",
+            "recordedAt", "RecordedAt",
+            "createdAt", "CreatedAt",
+            "receivedAt", "ReceivedAt",
+            "time", "Time");
+
+        var category = ReadString(
+            reading,
+            "sensorCategory", "SensorCategory",
+            "category", "Category",
+            "type", "Type");
+
+        var unit = ReadString(
+            reading,
+            "unit", "Unit",
+            "measurementUnit", "MeasurementUnit");
+
+        var candidate = new TelemetryRow
+        {
+            DeviceId = deviceId.Trim(),
+            Value = value,
+            Timestamp = timestamp,
+            Category = category,
+            Unit = unit
+        };
+
+        if (!latestByDevice.TryGetValue(candidate.DeviceId, out var existing))
+        {
+            latestByDevice[candidate.DeviceId] = candidate;
+            return;
+        }
+
+        var candidateTime = ParseTimestamp(candidate.Timestamp);
+        var existingTime = ParseTimestamp(existing.Timestamp);
+
+        if (candidateTime >= existingTime)
+            latestByDevice[candidate.DeviceId] = candidate;
+    }
+
+    private static TelemetryRow? FindTelemetry(
+        Dictionary<string, TelemetryRow> telemetryByDevice,
+        string nodeId,
+        string macAddress)
+    {
+        if (!string.IsNullOrWhiteSpace(nodeId) &&
+            telemetryByDevice.TryGetValue(nodeId.Trim(), out var byNodeId))
+        {
+            return byNodeId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(macAddress) &&
+            telemetryByDevice.TryGetValue(macAddress.Trim(), out var byMac))
+        {
+            return byMac;
+        }
+
+        return null;
+    }
+
+    private static DateTimeOffset ParseTimestamp(string? value)
+    {
+        if (DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal,
+                out var timestamp))
+        {
+            return timestamp;
+        }
+
+        return DateTimeOffset.MinValue;
+    }
+
+    private static string FormatTelemetryTimestamp(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "No reading recorded";
+
+        if (DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal,
+                out var timestamp))
+        {
+            return timestamp.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+
+        return value;
     }
 
     private void UpdateCategoryFilters()
@@ -283,7 +532,10 @@ public partial class RealTimeCommandStream : UserControl
         for (var i = 0; i < comboBox.Items.Count; i++)
         {
             if (comboBox.Items[i] is ComboBoxItem item &&
-                string.Equals(item.Content?.ToString(), value, StringComparison.OrdinalIgnoreCase))
+                string.Equals(
+                    item.Content?.ToString(),
+                    value,
+                    StringComparison.OrdinalIgnoreCase))
             {
                 comboBox.SelectedIndex = i;
                 return;
@@ -324,24 +576,29 @@ public partial class RealTimeCommandStream : UserControl
                 if (item is not JsonObject command)
                     continue;
 
-                var nodeId = ReadString(command, "nodeId", "NodeId");
+                var nodeId = ReadString(command, "nodeId", "NodeId", "deviceId", "DeviceId");
                 var category = ReadString(command, "category", "Category");
 
                 if (string.IsNullOrWhiteSpace(category))
                 {
                     category = _devices.FirstOrDefault(
-                        x => string.Equals(x.NodeId, nodeId, StringComparison.OrdinalIgnoreCase))
+                        x => string.Equals(
+                            x.NodeId,
+                            nodeId,
+                            StringComparison.OrdinalIgnoreCase))
                         ?.Category ?? "Unknown";
                 }
 
                 var status = ReadString(command, "status", "Status");
                 var result = ReadString(command, "result", "Result");
                 var commandName = ReadString(command, "command", "Command");
-                var createdAt = ReadString(command, "createdAt", "CreatedAt");
+                var createdAt = ReadString(command, "createdAt", "CreatedAt", "timestamp", "Timestamp");
 
                 _history.Add(new HistoryRow
                 {
-                    Command = string.IsNullOrWhiteSpace(commandName) ? "Unknown command" : commandName,
+                    Command = string.IsNullOrWhiteSpace(commandName)
+                        ? "Unknown command"
+                        : commandName,
                     NodeId = nodeId,
                     Category = category,
                     Result = !string.IsNullOrWhiteSpace(result) ? result : status,
@@ -351,7 +608,7 @@ public partial class RealTimeCommandStream : UserControl
 
             var sortedHistory = _history
                 .OrderByDescending(x =>
-                    DateTime.TryParse(x.CreatedAt, out var timestamp)
+                    DateTime.TryParse(x.CreatedAt, CultureInfo.CurrentCulture, out var timestamp)
                         ? timestamp
                         : DateTime.MinValue)
                 .ToList();
@@ -395,7 +652,7 @@ public partial class RealTimeCommandStream : UserControl
 
     private static string FormatTimestamp(string value)
     {
-        if (DateTimeOffset.TryParse(value, out var timestamp))
+        if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var timestamp))
             return timestamp.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss");
 
         return value;
@@ -442,6 +699,7 @@ public partial class RealTimeCommandStream : UserControl
             }
 
             ReplaceItems(_alerts, await response.Content.ReadAsStringAsync());
+            AddLocalDeviceWarnings();
 
             AlertsCount.Text = _alerts.Count.ToString();
             ActiveAlertsValue.Text = _alerts.Count.ToString();
@@ -454,6 +712,85 @@ public partial class RealTimeCommandStream : UserControl
         {
             AlertsStatus.Text = $"Could not load alerts: {ex.Message}";
         }
+    }
+
+    private void AddLocalDeviceWarnings()
+    {
+        foreach (var device in _devices)
+        {
+            var valueText = device.LatestValue ?? string.Empty;
+            var combined = $"{device.DisplayName} {device.Category} {valueText}";
+
+            if (valueText.Contains("offline", StringComparison.OrdinalIgnoreCase) ||
+                valueText.Contains("disconnected", StringComparison.OrdinalIgnoreCase) ||
+                valueText.Contains("fault", StringComparison.OrdinalIgnoreCase) ||
+                valueText.Contains("error", StringComparison.OrdinalIgnoreCase))
+            {
+                AddWarningIfMissing(
+                    $"DEVICE WARNING · {device.DisplayName} ({device.NodeId}): latest device status or reading indicates offline, disconnected, fault, or error.");
+            }
+
+            if (IsMoistureDevice(combined) &&
+                TryExtractNumber(valueText, out var moisture) &&
+                moisture < 20)
+            {
+                AddWarningIfMissing(
+                    $"CRITICAL MOISTURE · {device.DisplayName} ({device.NodeId}): reading {moisture:F1} is below 20%. Check irrigation requirements.");
+            }
+
+            if (IsTemperatureDevice(combined) &&
+                TryExtractNumber(valueText, out var temperature) &&
+                (temperature < 0 || temperature > 45))
+            {
+                AddWarningIfMissing(
+                    $"TEMPERATURE WARNING · {device.DisplayName} ({device.NodeId}): reading {temperature:F1} is outside the configured 0–45 range.");
+            }
+
+            if (!device.IsEnabled)
+            {
+                AddWarningIfMissing(
+                    $"DEVICE DISABLED · {device.DisplayName} ({device.NodeId}): this device is disabled and may not respond to commands.");
+            }
+
+            if (string.IsNullOrWhiteSpace(valueText) ||
+                valueText.Equals("Unknown", StringComparison.OrdinalIgnoreCase) ||
+                valueText.Equals("N/A", StringComparison.OrdinalIgnoreCase) ||
+                valueText.Equals("--", StringComparison.OrdinalIgnoreCase) ||
+                valueText.Equals("No telemetry available", StringComparison.OrdinalIgnoreCase))
+            {
+                AddWarningIfMissing(
+                    $"MISSING READING · {device.DisplayName} ({device.NodeId}): no usable latest reading is available.");
+            }
+        }
+    }
+
+    private void AddWarningIfMissing(string warning)
+    {
+        if (!_alerts.Any(x => x.Equals(warning, StringComparison.OrdinalIgnoreCase)))
+            _alerts.Add(warning);
+    }
+
+    private static bool TryExtractNumber(string value, out double number)
+    {
+        var match = Regex.Match(value, @"[-+]?(?:\d+\.?\d*|\.\d+)");
+
+        return double.TryParse(
+            match.Success ? match.Value : null,
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out number);
+    }
+
+    private static bool IsMoistureDevice(string value)
+    {
+        return value.Contains("moisture", StringComparison.OrdinalIgnoreCase) ||
+               value.Contains("soil", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsTemperatureDevice(string value)
+    {
+        return value.Contains("temperature", StringComparison.OrdinalIgnoreCase) ||
+               value.Contains("temp", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task LoadDisconnectedAsync()
@@ -562,7 +899,12 @@ public partial class RealTimeCommandStream : UserControl
         foreach (var name in names)
         {
             if (obj.TryGetPropertyValue(name, out var value) && value != null)
+            {
+                if (value is JsonObject or JsonArray)
+                    continue;
+
                 return value.ToString();
+            }
         }
 
         return string.Empty;
@@ -575,10 +917,17 @@ public partial class RealTimeCommandStream : UserControl
             if (obj.TryGetPropertyValue(name, out var value) &&
                 value != null &&
                 bool.TryParse(value.ToString(), out var result))
+            {
                 return result;
+            }
         }
 
         return false;
+    }
+
+    private static bool HasProperty(JsonObject obj, params string[] names)
+    {
+        return names.Any(name => obj.ContainsKey(name));
     }
 
     private static void ReplaceItems(ObservableCollection<string> target, string json)
@@ -722,7 +1071,8 @@ public partial class RealTimeCommandStream : UserControl
                     device.NodeId.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                     device.MacAddress.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                     device.Category.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    device.Location.Contains(search, StringComparison.OrdinalIgnoreCase);
+                    device.Location.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    device.LatestValue.Contains(search, StringComparison.OrdinalIgnoreCase);
 
                 var matchesCategory =
                     IsAllFilter(category) ||
@@ -753,6 +1103,7 @@ public partial class RealTimeCommandStream : UserControl
         }
     }
 
+
     private async void DeviceOverride_Click(object? sender, RoutedEventArgs e)
     {
         if (sender is not Control control || control.DataContext is not DeviceRow device)
@@ -778,12 +1129,16 @@ public partial class RealTimeCommandStream : UserControl
             !device.Category.Contains("pump", StringComparison.OrdinalIgnoreCase))
         {
             ConnectionStatusText.Text =
-                $"Manual override is not supported for category '{device.Category}'.";
+                $"Manual override is only supported for ON/OFF functions. '{device.Category}' does not support this operation.";
             return;
         }
 
+        ConnectionStatusText.Text =
+            "WARNING: Manual Override only works for ON/OFF functions.";
+
         await SendCommandAsync(device, "ManualOverride");
     }
+
 
     private async void DeviceEnableDisable_Click(object? sender, RoutedEventArgs e)
     {
@@ -807,7 +1162,6 @@ public partial class RealTimeCommandStream : UserControl
         }
 
         var command = device.IsEnabled ? "DisableSensor" : "EnableSensor";
-
         await SendCommandAsync(device, command);
     }
 
@@ -835,7 +1189,30 @@ public partial class RealTimeCommandStream : UserControl
                 return;
             }
 
-            var message = "Command accepted by the API.";
+            var message = string.Equals(command, "ManualOverride", StringComparison.OrdinalIgnoreCase)
+                ? "Manual override accepted. It cannot be undone because the API does not expose the previous actuator state."
+                : "Command accepted by the API.";
+
+            if (string.Equals(command, "EnableSensor", StringComparison.OrdinalIgnoreCase))
+            {
+                _commandUndoStack.Push(new CommandUndoEntry
+                {
+                    NodeId = device.NodeId,
+                    OriginalCommand = command,
+                    UndoCommand = "DisableSensor"
+                });
+                UpdateUndoButtonState();
+            }
+            else if (string.Equals(command, "DisableSensor", StringComparison.OrdinalIgnoreCase))
+            {
+                _commandUndoStack.Push(new CommandUndoEntry
+                {
+                    NodeId = device.NodeId,
+                    OriginalCommand = command,
+                    UndoCommand = "EnableSensor"
+                });
+                UpdateUndoButtonState();
+            }
 
             if (!string.IsNullOrWhiteSpace(body))
             {
@@ -864,7 +1241,7 @@ public partial class RealTimeCommandStream : UserControl
             OnlineDevicesValue.Text = _devices.Count(x => x.IsEnabled).ToString();
 
             CommandsTodayValue.Text = _history.Count(x =>
-                DateTime.TryParse(x.CreatedAt, out var createdAt) &&
+                DateTime.TryParse(x.CreatedAt, CultureInfo.CurrentCulture, out var createdAt) &&
                 createdAt.Date == DateTime.Today).ToString();
 
             ConnectionStatusText.Text = $"{command} for {device.NodeId}: {message}";
@@ -881,6 +1258,107 @@ public partial class RealTimeCommandStream : UserControl
         catch (Exception ex)
         {
             ConnectionStatusText.Text = $"Command request failed: {ex.Message}";
+        }
+    }
+
+    private async void UndoCommandButton_Click(object? sender, RoutedEventArgs e)
+        => await UndoLastCommandAsync();
+
+    private async Task UndoLastCommandAsync()
+    {
+        if (_isUndoing || _commandUndoStack.Count == 0)
+            return;
+
+        var entry = _commandUndoStack.Peek();
+        _isUndoing = true;
+        UpdateUndoButtonState();
+
+        try
+        {
+            ConnectionStatusText.Text = $"Undoing {entry.OriginalCommand} for {entry.NodeId}...";
+
+            var payload = JsonSerializer.Serialize(new
+            {
+                NodeId = entry.NodeId,
+                Command = entry.UndoCommand
+            });
+
+            using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            using var response = await ApiClient.HttpClient.PostAsync("api/Commands", content);
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ConnectionStatusText.Text =
+                    $"Undo failed: HTTP {(int)response.StatusCode}. {body}";
+                return;
+            }
+
+            _commandUndoStack.Pop();
+            UpdateUndoButtonState();
+
+            await LoadDevicesAsync();
+            await LoadHistoryAsync();
+
+            RegisteredDevicesValue.Text = _devices.Count.ToString();
+            OnlineDevicesValue.Text = _devices.Count(x => x.IsEnabled).ToString();
+
+            CommandsTodayValue.Text = _history.Count(x =>
+                DateTime.TryParse(x.CreatedAt, CultureInfo.CurrentCulture, out var createdAt) &&
+                createdAt.Date == DateTime.Today).ToString();
+
+            var resultMessage = string.IsNullOrWhiteSpace(body)
+                ? "The API accepted the inverse command."
+                : body;
+
+            try
+            {
+                var result = JsonNode.Parse(body);
+                var status = result?["status"]?.ToString() ?? result?["Status"]?.ToString();
+                var resultText = result?["result"]?.ToString() ?? result?["Result"]?.ToString();
+
+                if (!string.IsNullOrWhiteSpace(status))
+                    resultMessage = status;
+
+                if (!string.IsNullOrWhiteSpace(resultText))
+                    resultMessage += $": {resultText}";
+            }
+            catch (JsonException)
+            {
+                if (string.IsNullOrWhiteSpace(body))
+                    resultMessage = "The API accepted the inverse command.";
+            }
+
+            ConnectionStatusText.Text =
+                $"Undo successful: {entry.OriginalCommand} for {entry.NodeId} reversed. {resultMessage}";
+        }
+        catch (HttpRequestException ex)
+        {
+            ConnectionStatusText.Text = $"Cannot reach the API to undo the command: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            ConnectionStatusText.Text = "Undo request timed out. The command remains in undo history.";
+        }
+        catch (Exception ex)
+        {
+            ConnectionStatusText.Text = $"Undo failed: {ex.Message}";
+        }
+        finally
+        {
+            _isUndoing = false;
+            UpdateUndoButtonState();
+        }
+    }
+
+    private void UpdateUndoButtonState()
+    {
+        if (UndoCommandButton != null)
+        {
+            UndoCommandButton.IsEnabled = _commandUndoStack.Count > 0 && !_isUndoing;
+            UndoCommandButton.Content = _commandUndoStack.Count > 0
+                ? $"Undo Last Command ({_commandUndoStack.Count})"
+                : "Undo Last Command";
         }
     }
 
@@ -927,7 +1405,6 @@ public partial class RealTimeCommandStream : UserControl
         HistoryItemsControl.IsVisible = _filteredHistory.Count > 0;
     }
 
-
     private async void ExportHistoryButton_Click(object? sender, RoutedEventArgs e)
     {
         try
@@ -941,9 +1418,9 @@ public partial class RealTimeCommandStream : UserControl
             }
 
             var lines = new List<string>
-        {
-            "Command,NodeId,Category,Result,CreatedAt"
-        };
+            {
+                "Command,NodeId,Category,Result,CreatedAt"
+            };
 
             foreach (var item in _filteredHistory)
             {
@@ -963,10 +1440,10 @@ public partial class RealTimeCommandStream : UserControl
                     DefaultExtension = "csv",
                     FileTypeChoices = new[]
                     {
-                    new FilePickerFileType("CSV file")
-                    {
-                        Patterns = new[] { "*.csv" }
-                    }
+                        new FilePickerFileType("CSV file")
+                        {
+                            Patterns = new[] { "*.csv" }
+                        }
                     }
                 });
 
@@ -977,7 +1454,7 @@ public partial class RealTimeCommandStream : UserControl
             }
 
             await using (var stream = await file.OpenWriteAsync())
-            await using (var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(true)))
+            await using (var writer = new StreamWriter(stream, new UTF8Encoding(true)))
             {
                 await writer.WriteAsync(string.Join(Environment.NewLine, lines));
             }
@@ -990,7 +1467,6 @@ public partial class RealTimeCommandStream : UserControl
             ConnectionStatusText.Text = $"CSV export failed: {ex.Message}";
         }
     }
-
 
     private static string Csv(string? value)
     {
@@ -1031,6 +1507,13 @@ public class DeviceRow
     public bool IsEnabled { get; set; }
 }
 
+public class CommandUndoEntry
+{
+    public string NodeId { get; set; } = string.Empty;
+    public string OriginalCommand { get; set; } = string.Empty;
+    public string UndoCommand { get; set; } = string.Empty;
+}
+
 public class HistoryRow
 {
     public string Command { get; set; } = string.Empty;
@@ -1039,4 +1522,13 @@ public class HistoryRow
     public string Result { get; set; } = string.Empty;
     public string ResultForeground { get; set; } = "#DCE7ED";
     public string CreatedAt { get; set; } = string.Empty;
+}
+
+internal sealed class TelemetryRow
+{
+    public string DeviceId { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public string Timestamp { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
 }

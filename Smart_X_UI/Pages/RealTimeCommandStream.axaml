@@ -360,6 +360,29 @@
                                TextWrapping="Wrap"
                                Foreground="#FFB86B"/>
 
+                    <Border Background="#3A3020"
+                            BorderBrush="#8B6B35"
+                            BorderThickness="1"
+                            CornerRadius="7"
+                            Padding="12">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="⚠"
+                                       Foreground="#FFD08A"
+                                       FontSize="18"
+                                       VerticalAlignment="Top"/>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Manual Override Warning"
+                                           Foreground="#FFD08A"
+                                           FontWeight="SemiBold"/>
+
+                                <TextBlock Text="Manual Override only works for ON/OFF functions."
+                                           Foreground="#F5E6C8"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <TextBlock x:Name="DeviceEmptyText"
                                Text="Loading registered devices..."
                                Classes="muted"
@@ -452,8 +475,9 @@
 
             <Border Classes="panel">
                 <StackPanel Spacing="14">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto,Auto"
+                          ColumnSpacing="8">
+                        <StackPanel Grid.Column="0" Spacing="4">
                             <TextBlock Text="Command history"
                                        Classes="section-title"/>
 
@@ -463,6 +487,14 @@
                         </StackPanel>
 
                         <Button Grid.Column="1"
+                                x:Name="UndoCommandButton"
+                                Content="Undo Last Command"
+                                Click="UndoCommandButton_Click"
+                                IsEnabled="False"
+                                Margin="0,0,8,0"
+                                VerticalAlignment="Top"/>
+
+                        <Button Grid.Column="2"
                                 Content="Export CSV"
                                 Click="ExportHistoryButton_Click"
                                 VerticalAlignment="Top"/>

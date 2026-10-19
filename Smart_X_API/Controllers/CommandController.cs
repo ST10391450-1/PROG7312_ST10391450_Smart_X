@@ -1,9 +1,5 @@
-﻿
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Smart_X_API.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Smart_X_API.Controllers;
 
@@ -13,6 +9,7 @@ public class CommandsController : ControllerBase
 {
     private static readonly object Sync = new();
     private static readonly List<DeviceCommand> Commands = new();
+    private static readonly Stack<UndoEntry> UndoStack = new();
 
     private static readonly HashSet<string> AllowedCommands =
         new(StringComparer.OrdinalIgnoreCase)
@@ -55,6 +52,12 @@ public class CommandsController : ControllerBase
                     request.Command.Trim(),
                     StringComparison.OrdinalIgnoreCase));
 
+            var category = sensor.Category ?? string.Empty;
+            var previousEnabled = sensor.IsEnabled;
+            var previousOutput = OutputStates.TryGetValue(
+                sensor.NodeId,
+                out var existingOutput) && existingOutput;
+
             var command = new DeviceCommand
             {
                 Id = Guid.NewGuid(),
@@ -64,9 +67,10 @@ public class CommandsController : ControllerBase
                 CreatedAt = DateTime.UtcNow
             };
 
-            var category = sensor.Category ?? string.Empty;
+            var changesEnabledState =
+                commandName is "EnableSensor" or "DisableSensor";
 
-            if (commandName is "EnableSensor" or "DisableSensor")
+            if (changesEnabledState)
             {
                 sensor.IsEnabled = commandName == "EnableSensor";
                 command.Status = "Completed";
@@ -78,15 +82,12 @@ public class CommandsController : ControllerBase
             {
                 if (!category.Contains("actuator", StringComparison.OrdinalIgnoreCase) &&
                     !category.Contains("relay", StringComparison.OrdinalIgnoreCase))
-                {
                     return BadRequest("Relay commands require an actuator or relay device.");
-                }
 
                 if (!sensor.IsEnabled)
                     return Conflict("The device is disabled. Enable it first.");
 
                 OutputStates[sensor.NodeId] = commandName == "RelayOn";
-
                 command.Status = "Completed";
                 command.Result = OutputStates[sensor.NodeId]
                     ? "Simulated relay is ON."
@@ -96,15 +97,12 @@ public class CommandsController : ControllerBase
             {
                 if (!category.Contains("actuator", StringComparison.OrdinalIgnoreCase) &&
                     !category.Contains("pump", StringComparison.OrdinalIgnoreCase))
-                {
                     return BadRequest("Pump commands require an actuator or pump device.");
-                }
 
                 if (!sensor.IsEnabled)
                     return Conflict("The device is disabled. Enable it first.");
 
                 OutputStates[sensor.NodeId] = commandName == "PumpStart";
-
                 command.Status = "Completed";
                 command.Result = OutputStates[sensor.NodeId]
                     ? "Simulated pump is running."
@@ -115,12 +113,7 @@ public class CommandsController : ControllerBase
                 if (!sensor.IsEnabled)
                     return Conflict("The device is disabled. Enable it first.");
 
-                var currentState = OutputStates.TryGetValue(
-                    sensor.NodeId,
-                    out var state) && state;
-
-                OutputStates[sensor.NodeId] = !currentState;
-
+                OutputStates[sensor.NodeId] = !previousOutput;
                 command.Status = "Completed";
                 command.Result = OutputStates[sensor.NodeId]
                     ? "Simulated manual override turned output ON."
@@ -130,7 +123,94 @@ public class CommandsController : ControllerBase
             command.CompletedAt = DateTime.UtcNow;
             Commands.Add(command);
 
+            UndoStack.Push(new UndoEntry
+            {
+                OriginalCommandId = command.Id,
+                NodeId = sensor.NodeId,
+                Command = commandName,
+                PreviousEnabled = previousEnabled,
+                PreviousOutput = previousOutput,
+                ChangesEnabledState = changesEnabledState
+            });
+
             return Ok(command);
+        }
+    }
+
+    [HttpPost("undo")]
+    public IActionResult UndoLastCommand()
+    {
+        lock (Sync)
+        {
+            if (UndoStack.Count == 0)
+                return Conflict("There are no commands available to undo.");
+
+            var entry = UndoStack.Peek();
+
+            var sensor = SensorsController.Sensors.FirstOrDefault(
+                x => string.Equals(
+                    x.NodeId,
+                    entry.NodeId,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (sensor == null)
+                return Conflict("The device for the last command no longer exists.");
+
+            if (entry.ChangesEnabledState)
+            {
+                sensor.IsEnabled = entry.PreviousEnabled;
+            }
+            else
+            {
+                OutputStates[sensor.NodeId] = entry.PreviousOutput;
+            }
+
+            UndoStack.Pop();
+
+            var undoCommand = new DeviceCommand
+            {
+                Id = Guid.NewGuid(),
+                NodeId = sensor.NodeId,
+                Command = "Undo",
+                Status = "Completed",
+                CreatedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow,
+                Result = $"Undid {entry.Command} (command ID: {entry.OriginalCommandId}). " +
+                         (entry.ChangesEnabledState
+                             ? $"Device enabled state restored to {sensor.IsEnabled}."
+                             : $"Output state restored to {(entry.PreviousOutput ? "ON" : "OFF")}.")
+            };
+
+            Commands.Add(undoCommand);
+
+            return Ok(new
+            {
+                Message = "Last command undone successfully.",
+                OriginalCommandId = entry.OriginalCommandId,
+                Undo = undoCommand,
+                DeviceState = new
+                {
+                    sensor.NodeId,
+                    sensor.IsEnabled,
+                    OutputOn = OutputStates.TryGetValue(sensor.NodeId, out var state) && state
+                }
+            });
+        }
+    }
+
+    [HttpGet("undo/available")]
+    public IActionResult IsUndoAvailable()
+    {
+        lock (Sync)
+        {
+            return Ok(new
+            {
+                CanUndo = UndoStack.Count > 0,
+                UndoCount = UndoStack.Count,
+                LastCommand = UndoStack.Count > 0
+                    ? UndoStack.Peek().Command
+                    : null
+            });
         }
     }
 
@@ -223,6 +303,16 @@ public class CommandsController : ControllerBase
                 OutputState = outputOn ? "ON" : "OFF"
             });
         }
+    }
+
+    private sealed class UndoEntry
+    {
+        public Guid OriginalCommandId { get; init; }
+        public string NodeId { get; init; } = string.Empty;
+        public string Command { get; init; } = string.Empty;
+        public bool PreviousEnabled { get; init; }
+        public bool PreviousOutput { get; init; }
+        public bool ChangesEnabledState { get; init; }
     }
 }
 
