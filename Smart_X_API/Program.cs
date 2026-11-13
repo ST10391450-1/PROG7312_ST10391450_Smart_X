@@ -3,9 +3,8 @@ using Smart_X_API.Controllers;
 using Smart_X_API.Services;
 using Smart_X_API.Services.Command;
 using Smart_X_API.Services.Location;
-using Smart_X_API.Services.Network;
-using Smart_X_API.Services.Sensors;
 using Smart_X_API.Services.Telemetry;
+using Smart_X_API.Services.Sensors;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,14 +25,17 @@ builder.Services.AddSingleton<AlertTrackingService>();
 builder.Services.AddSingleton<CommandHistoryService>();
 builder.Services.AddSingleton<PredictiveActionService>();
 
-builder.Services.AddSingleton<NetworkSimulationService>();
+builder.Services.AddSingleton<TelemetryProcessingQueue>();
+builder.Services.AddSingleton<AlertDeduplicationService>();
+
+/*builder.Services.AddSingleton<NetworkSimulationService>();
 
 builder.Services.AddHostedService(provider =>
     provider.GetRequiredService<NetworkSimulationService>());
 
 builder.Services.AddSingleton<INetworkSimulationService>(provider =>
     provider.GetRequiredService<NetworkSimulationService>());
-
+*/
 builder.Services.AddScoped<
     INetworkTraversalService,
     NetworkTraversalService>();

@@ -1,19 +1,28 @@
-﻿using Smart_X_API.Models.Sensors;
+﻿
+using Smart_X_API.Models.Sensors;
 
 namespace Smart_X_API.Services.Telemetry;
 
 public class TelemetryService
 {
+    private readonly TelemetryProcessingQueue _processingQueue;
     private readonly List<SensorReadingRecord> _readings = new();
     private readonly List<double> _history = new();
     private readonly TelemetryAvlTree _historicalTree = new();
     private readonly object _lock = new();
 
-    public SensorReadingRecord AddReading(
+    public TelemetryService(
+        TelemetryProcessingQueue processingQueue)
+    {
+        _processingQueue = processingQueue;
+    }
+
+    public async Task<SensorReadingRecord> AddReadingAsync(
         string deviceId,
         string sensorCategory,
         double value,
-        DateTime timestamp)
+        DateTime timestamp,
+        CancellationToken cancellationToken = default)
     {
         var reading = new SensorReadingRecord
         {
@@ -29,6 +38,14 @@ public class TelemetryService
             _history.Add(value);
             _historicalTree.Insert(reading);
         }
+
+        await _processingQueue.EnqueueAsync(
+            new TelemetryEvent(
+                deviceId,
+                sensorCategory,
+                value,
+                timestamp),
+            cancellationToken);
 
         return reading;
     }

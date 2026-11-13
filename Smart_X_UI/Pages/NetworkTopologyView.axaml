@@ -453,18 +453,18 @@
 
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Spacing="3">
-                                    <TextBlock Text="Live Mesh Topology"
+                                    <TextBlock Text="Virtual Network Topology Graph"
                                                FontSize="14"
                                                FontWeight="SemiBold"/>
 
-                                    <TextBlock Text="500m × 500m simulated network area"
+                                    <TextBlock Text="Live representation of virtual nodes and their network connections"
                                                Foreground="#8FA7B8"
                                                FontSize="10"/>
                                 </StackPanel>
 
                                 <TextBlock Grid.Column="1"
-                                           Text="METRES"
-                                           Foreground="#607D8D"
+                                           Text="NETWORK GRAPH"
+                                           Foreground="#72D6B4"
                                            FontSize="9"
                                            VerticalAlignment="Center"/>
                             </Grid>
@@ -484,14 +484,15 @@
                                               VerticalScrollBarVisibility="Auto"
                                               MaxHeight="470">
 
-                                    <Canvas x:Name="SimulationMapCanvas"
+                                    <Canvas x:Name="SimulationGraphCanvas"
                                             Width="700"
                                             Height="460"
                                             Background="#0B1722"/>
                                 </ScrollViewer>
                             </Border>
 
-                            <Border Background="#254253" Height="1"/>
+                            <Border Background="#254253"
+                                    Height="1"/>
 
                             <WrapPanel Orientation="Horizontal">
 
@@ -770,7 +771,8 @@
                                        FontSize="12"
                                        TextWrapping="Wrap"/>
 
-                            <Border Background="#254253" Height="1"/>
+                            <Border Background="#254253"
+                                    Height="1"/>
 
                             <TextBlock Text="Selected Connections"
                                        FontWeight="SemiBold"

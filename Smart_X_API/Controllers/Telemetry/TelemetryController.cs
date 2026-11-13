@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿
+using Microsoft.AspNetCore.Mvc;
 using Smart_X_API.Controllers.Sensors;
 using Smart_X_API.Models.Telemetry;
 using Smart_X_API.Services;
@@ -32,7 +33,7 @@ public class TelemetryController : ControllerBase
     }
 
     [HttpPost("temperature")]
-    public IActionResult ReceiveTemperature(
+    public async Task<IActionResult> ReceiveTemperature(
         [FromBody] TelemetryPacket<float> packet)
     {
         if (packet == null || string.IsNullOrWhiteSpace(packet.DeviceId))
@@ -47,11 +48,20 @@ public class TelemetryController : ControllerBase
             return BadRequest("Temperature must be between -50 and 100 °C.");
 
         var timestamp = GetTimestamp(packet.Timestamp);
-        var reading = _telemetryService.AddReading(
-            packet.DeviceId, packet.SensorCategory, packet.Value, timestamp);
 
-        RecordTelemetry(packet.DeviceId, packet.SensorCategory,
-            packet.Value, "°C", timestamp);
+        var reading = await _telemetryService.AddReadingAsync(
+            packet.DeviceId,
+            packet.SensorCategory,
+            packet.Value,
+            timestamp,
+            HttpContext.RequestAborted);
+
+        RecordTelemetry(
+            packet.DeviceId,
+            packet.SensorCategory,
+            packet.Value,
+            "°C",
+            timestamp);
 
         return Ok(new
         {
@@ -65,7 +75,7 @@ public class TelemetryController : ControllerBase
     }
 
     [HttpPost("power")]
-    public IActionResult ReceivePower(
+    public async Task<IActionResult> ReceivePower(
         [FromBody] TelemetryPacket<int> packet)
     {
         if (packet == null || string.IsNullOrWhiteSpace(packet.DeviceId))
@@ -79,11 +89,20 @@ public class TelemetryController : ControllerBase
             return BadRequest("Power draw cannot be negative.");
 
         var timestamp = GetTimestamp(packet.Timestamp);
-        var reading = _telemetryService.AddReading(
-            packet.DeviceId, packet.SensorCategory, packet.Value, timestamp);
 
-        RecordTelemetry(packet.DeviceId, packet.SensorCategory,
-            packet.Value, "W", timestamp);
+        var reading = await _telemetryService.AddReadingAsync(
+            packet.DeviceId,
+            packet.SensorCategory,
+            packet.Value,
+            timestamp,
+            HttpContext.RequestAborted);
+
+        RecordTelemetry(
+            packet.DeviceId,
+            packet.SensorCategory,
+            packet.Value,
+            "W",
+            timestamp);
 
         return Ok(new
         {
@@ -97,7 +116,7 @@ public class TelemetryController : ControllerBase
     }
 
     [HttpPost("switch")]
-    public IActionResult ReceiveSwitch(
+    public async Task<IActionResult> ReceiveSwitch(
         [FromBody] TelemetryPacket<bool> packet)
     {
         if (packet == null || string.IsNullOrWhiteSpace(packet.DeviceId))
@@ -110,11 +129,19 @@ public class TelemetryController : ControllerBase
         var timestamp = GetTimestamp(packet.Timestamp);
         var numericValue = packet.Value ? 1d : 0d;
 
-        var reading = _telemetryService.AddReading(
-            packet.DeviceId, packet.SensorCategory, numericValue, timestamp);
+        var reading = await _telemetryService.AddReadingAsync(
+            packet.DeviceId,
+            packet.SensorCategory,
+            numericValue,
+            timestamp,
+            HttpContext.RequestAborted);
 
-        RecordTelemetry(packet.DeviceId, packet.SensorCategory,
-            numericValue, "state", timestamp);
+        RecordTelemetry(
+            packet.DeviceId,
+            packet.SensorCategory,
+            numericValue,
+            "state",
+            timestamp);
 
         return Ok(new
         {
@@ -128,7 +155,7 @@ public class TelemetryController : ControllerBase
     }
 
     [HttpPost("measurement")]
-    public IActionResult ReceiveMeasurement(
+    public async Task<IActionResult> ReceiveMeasurement(
         [FromBody] MeasurementTelemetryPacket packet)
     {
         if (packet == null || string.IsNullOrWhiteSpace(packet.DeviceId))
@@ -169,11 +196,20 @@ public class TelemetryController : ControllerBase
             return BadRequest("Temperature must be between -50 and 100 °C.");
 
         var timestamp = GetTimestamp(packet.Timestamp);
-        var reading = _telemetryService.AddReading(
-            packet.DeviceId, packet.SensorCategory, packet.Value, timestamp);
 
-        RecordTelemetry(packet.DeviceId, packet.SensorCategory,
-            packet.Value, unit, timestamp);
+        var reading = await _telemetryService.AddReadingAsync(
+            packet.DeviceId,
+            packet.SensorCategory,
+            packet.Value,
+            timestamp,
+            HttpContext.RequestAborted);
+
+        RecordTelemetry(
+            packet.DeviceId,
+            packet.SensorCategory,
+            packet.Value,
+            unit,
+            timestamp);
 
         return Ok(new
         {
@@ -201,10 +237,6 @@ public class TelemetryController : ControllerBase
         return Ok(_telemetryService.GetReadings(deviceId));
     }
 
-    /// <summary>
-    /// Historical range query answered by the AVL tree, e.g.
-    /// GET api/Telemetry/range?startTime=2026-11-13T08:00:00Z&amp;endTime=2026-11-13T09:00:00Z
-    /// </summary>
     [HttpGet("range")]
     [ProducesResponseType(typeof(TelemetryRangeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -249,12 +281,8 @@ public class TelemetryController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Generates demo history for an existing sensor so the AVL range query
-    /// can be demonstrated on a large data set.
-    /// </summary>
     [HttpPost("seed")]
-    public IActionResult SeedHistory(
+    public async Task<IActionResult> SeedHistory(
         [FromQuery] string deviceId,
         [FromQuery] string sensorCategory,
         [FromQuery] int count = 10000,
@@ -280,11 +308,22 @@ public class TelemetryController : ControllerBase
 
         for (var i = 0; i < count; i++)
         {
-            _telemetryService.AddReading(
+            var timestamp = start.AddSeconds((double)i * intervalSeconds);
+            var value = Math.Round(22 + 6 * Math.Sin(i / 120.0), 2);
+
+            await _telemetryService.AddReadingAsync(
                 deviceId,
                 sensorCategory,
-                Math.Round(22 + 6 * Math.Sin(i / 120.0), 2),
-                start.AddSeconds((double)i * intervalSeconds));
+                value,
+                timestamp,
+                HttpContext.RequestAborted);
+
+            RecordTelemetry(
+                deviceId,
+                sensorCategory,
+                value,
+                string.Empty,
+                timestamp);
         }
 
         return Ok(new
@@ -300,7 +339,8 @@ public class TelemetryController : ControllerBase
     }
 
     [HttpPost("batch")]
-    public IActionResult ProcessBatch([FromBody] TelemetryBatch batch)
+    public async Task<IActionResult> ProcessBatch(
+        [FromBody] TelemetryBatch batch)
     {
         if (batch == null)
             return BadRequest("Batch is required.");
@@ -336,11 +376,12 @@ public class TelemetryController : ControllerBase
 
         foreach (var value in processed)
         {
-            _telemetryService.AddReading(
+            await _telemetryService.AddReadingAsync(
                 batch.DeviceId,
                 batch.SensorCategory,
                 value,
-                timestamp);
+                timestamp,
+                HttpContext.RequestAborted);
 
             RecordTelemetry(
                 batch.DeviceId,
