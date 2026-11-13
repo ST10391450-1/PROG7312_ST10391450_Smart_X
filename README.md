@@ -1,6 +1,6 @@
 # Smart X
 
-**PROG7312 – Part 1**
+**PROG7312 – Part 3**
 
 **Student:** Thomas Dennis  
 **Student Number:** ST10391450
