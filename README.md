@@ -5,34 +5,39 @@
 **Student:** Thomas Dennis  
 **Student Number:** ST10391450
 
-
-**DEMO VIDEO | https://youtu.be/hKZyo6NCo-Y**
 ---
 
 ## Overview
 
-Smart X is a sensor management system developed for the PROG7312 module.
+Smart X is a sensor management and network monitoring system.
 
-The project provides a central REST API for managing sensors, a desktop user interface for interacting with the system, and a Python-based sensor simulator for generating simulated sensor activity.
+The project provides a central REST API for managing sensors, collecting telemetry, processing device commands, and exposing network information. An Avalonia-based desktop application provides an interface for interacting with the system, monitoring connected devices, visualising physical and virtual network topologies, and performing network analysis. A Python-based simulator generates sensor activity and simulates network nodes, connections, and changing device statuses.
 
-The application demonstrates the use of C#, ASP.NET Core, Avalonia UI, Python, REST APIs, Docker, object-oriented programming, file handling, validation, client-server communication, device command handling, and priority-based alert processing.
+The application demonstrates the use of C#, ASP.NET Core, Avalonia UI, Python, REST APIs, Docker, object-oriented programming, file handling, input validation, client-server communication, device command handling, telemetry processing, network graph visualisation, and graph-based algorithms such as Minimum Spanning Tree and shortest-path analysis.
+
+By combining sensor management, simulated telemetry, and network topology monitoring, Smart X demonstrates how software components can work together to manage connected devices, represent network relationships, monitor connectivity, and analyse network structures.
 
 ---
 
 # Technology Stack
 
-| Component           | Technology           |
-| ------------------- | -------------------- |
-| Backend             | C#                   |
-| REST API            | ASP.NET Core         |
-| Desktop Application | Avalonia UI          |
-| UI Markup           | XAML                 |
-| Sensor Simulator    | Python               |
-| API Communication   | HTTP / REST          |
-| Data Format         | JSON                 |
-| Containerisation    | Docker               |
-| Version Control     | Git / GitHub         |
-| API Testing         | cURL / HTTP Requests |
+| Component | Technology |
+|---|---|
+| Backend Development | C# |
+| Backend Framework | ASP.NET Core |
+| Desktop Application | Avalonia UI |
+| UI Markup | XAML |
+| Sensor Simulator | Python |
+| API Communication | HTTP / REST |
+| Data Exchange Format | JSON |
+| Network Visualisation | Avalonia Drawing / Canvas |
+| Network Analysis | Graph Algorithms (MST and Shortest Path) |
+| Asynchronous Processing | .NET Background Services / Queues |
+| Containerisation | Docker |
+| Version Control | Git / GitHub |
+| API Testing | cURL / HTTP Requests |
+| Development Environment | Visual Studio / Visual Studio Code |
+| Configuration and Data Storage | JSON Files |
 
 ---
 
@@ -42,25 +47,38 @@ The application demonstrates the use of C#, ASP.NET Core, Avalonia UI, Python, R
 
 The **Smart X API** is the backend of the application.
 
-It provides the REST endpoints used by the desktop application and Python sensor simulator.
+It handles:
 
-The API handles:
+- Sensor registration
+- Sensor retrieval
+- Sensor deletion
+- Sensor validation
+- Duplicate sensor detection
+- Sensor attachment management
+- File uploads
+- File downloads
+- File deletion
+- Telemetry submission and processing
+- Device command requests
+- Command history and command results
+- Device insights, alerts, and disconnected-device information
+- Priority alert queue operations
+- Physical network topology retrieval
+- Virtual network simulation
+- Network node and connection information
+- Minimum Spanning Tree calculations
+- Shortest-path analysis
+- HTTP responses
+- Request validation
 
-* Sensor registration
-* Sensor retrieval
-* Sensor deletion
-* Sensor validation
-* Duplicate sensor detection
-* Sensor attachment management
-* File uploads
-* File downloads
-* File deletion
-* Device command requests
-* Command history and command results
-* Device insights, alerts, and disconnected-device information
-* Priority alert queue operations
-* HTTP responses
-* Request validation
+The API exposes the following network-related endpoints:
+
+| Method | Endpoint | Functionality |
+|---|---|---|
+| `GET` | `/api/NetworkTopology` | Retrieves physical network topology information |
+| `GET` | `/api/NetworkSimulation` | Retrieves virtual network simulation data |
+| `POST` | `/api/Telemetry/measurement` | Submits sensor measurement data |
+| `POST` | `/api/Telemetry/switch` | Submits device switch or relay commands |
 
 The API is hosted locally on:
 
@@ -76,27 +94,39 @@ The actual base URL must match the address configured in the running API and the
 
 The **Smart X UI** is the desktop client for the system.
 
-It is built using **C# and Avalonia UI**.
+It is built using **C# and Avalonia UI**, providing a graphical interface for managing sensors, monitoring device activity, interacting with the API, and analysing network information.
 
 The interface allows users to:
 
-* Register sensors
-* View registered sensors
-* Select sensors
-* View sensor information
-* Simulate sensor payloads
-* Manage sensor attachments
-* Interact with the Smart X API
-* Monitor device state and operational insights
-* Search and filter devices
-* Issue supported manual device commands
-* Review and filter command history
-* Export command history to CSV
-* Check whether a command undo operation is available
-* Process the next alert from the priority alert queue
-* View recently processed alerts
+- Register sensors
+- View registered sensors
+- Select sensors
+- View sensor information
+- Simulate sensor payloads
+- Manage sensor attachments
+- Interact with the Smart X API
+- Monitor device state and operational insights
+- Search and filter devices
+- Issue supported manual device commands
+- Review and filter command history
+- Export command history to CSV
+- Check whether a command undo operation is available
+- Process the next alert from the priority alert queue
+- View recently processed alerts
+- Monitor physical network topology
+- View registered, connected, and disconnected network nodes
+- Inspect physical network connections
+- View virtual network simulation statistics
+- Visualise virtual network nodes and connections
+- Monitor simulated online and offline device states
+- Calculate and display a Minimum Spanning Tree (MST)
+- View selected MST connections and total network cost
+- Identify network components
+- Calculate shortest paths between selected network nodes
 
-The UI communicates with the backend using HTTP requests. The Real-Time Command Stream page periodically refreshes sensor, command, recommendation, alert, and disconnected-device information.
+The UI communicates with the backend using HTTP requests. The **Real-Time Command Stream** page periodically refreshes sensor, command, recommendation, alert, and disconnected-device information.
+
+The **Network Topology** page provides a graphical representation of physical and simulated network structures, allowing users to inspect node relationships and evaluate network connectivity through graph-based analysis.
 
 ---
 
@@ -106,11 +136,11 @@ The project includes a Python sensor simulator that represents smart sensors wit
 
 The simulator communicates with the Smart X API and can:
 
-* Discover registered sensors
-* Generate simulated sensor activity
-* Send requests to the API
-* Simulate telemetry
-* Provide repeatable testing of the API
+- Discover registered sensors
+- Generate simulated sensor activity
+- Send requests to the API
+- Simulate telemetry
+- Provide repeatable testing of the API
 
 The simulator communicates with:
 
@@ -120,13 +150,11 @@ http://localhost:8080
 
 ---
 
-## Docker
+## Docker Deployment
 
-Docker is used to containerise the ASP.NET Core API.
+The Smart X API can be containerised using Docker, allowing it to run in an isolated environment with a consistent runtime configuration.
 
-The API can therefore be run inside a Docker container while exposing port `8080` to the host machine.
-
-Build the Docker image:
+Build the Docker image from the API project directory:
 
 ```bash
 docker build -t smart-x-api:latest .
@@ -138,36 +166,73 @@ Run the container:
 docker run -d --name smart-x-api -p 8080:8080 smart-x-api:latest
 ```
 
+The API is then accessible through:
+
+```text
+http://localhost:8080
+```
+
+The port mapping must match the port configured by the ASP.NET Core application inside the container.
+
 ---
 
 # System Architecture
 
+Smart X uses a client-server architecture consisting of an ASP.NET Core REST API, an Avalonia desktop application, and a Python-based sensor simulator.
+
+The API acts as the central communication point for sensor management, telemetry, device commands, attachments, operational insights, and network information. The desktop application communicates with the API to provide users with management and monitoring functionality, while the Python simulator generates simulated sensor readings and network activity.
+
 ```text
-                         Smart X
-                            │
-          ┌─────────────────┼──────────────────┐
-          │                 │                  │
-          ▼                 ▼                  ▼
-     Avalonia UI      Python Simulator       Docker
-          │                 │                  │
-          │                 │                  │
-          └────────── HTTP / REST ─────────────┘
-                            │
-                            ▼
-                    ASP.NET Core API
-                            │
-          ┌─────────────────┼──────────────────┐
-          │                 │                  │
-          ▼                 ▼                  ▼
-   Sensor Management  Attachment Management  Commands & Insights
-                                                   │
-                                                   ▼
-                                          Priority Alert Queue
+                              Smart X
+                                 |
+             +-------------------+-------------------+
+             |                   |                   |
+             v                   v                   v
+        Avalonia UI       Python Simulator          Docker
+             |                   |             (API Container)
+             |                   |                   |
+             +--------- HTTP / REST ----------------+
+                                 |
+                                 v
+                         ASP.NET Core API
+                                 |
+              +------------------+------------------+
+              |                  |                  |
+              v                  v                  v
+       Sensor Management   Attachment Management   Commands
+              |                  |                  |
+              v                  v                  v
+         Telemetry          File Handling       Device Insights
+                                                     |
+                                                     v
+                                              Priority Alert Queue
+                                                     |
+                                                     v
+                                           Operational Information
+
+                         Network Functionality
+                                 |
+              +------------------+------------------+
+              |                                     |
+              v                                     v
+       Physical Topology                    Virtual Simulation
+              |                                     |
+              +------------------+------------------+
+                                 |
+                                 v
+                       Network Graph Analysis
+                                 |
+                    +------------+------------+
+                    |                         |
+                    v                         v
+             Minimum Spanning Tree      Shortest Path
 ```
 
 ---
 
 # Project Structure
+
+The project is organised into three primary components: the ASP.NET Core API, Avalonia desktop application, and Python sensor simulator.
 
 ```text
 Smart_X/
@@ -189,6 +254,8 @@ Smart_X/
 │
 ├── SensorSimulator/
 │   ├── sensor_simulator.py
+│   ├── sensors.json
+│   ├── network_snapshot.json
 │   └── ...
 │
 ├── RUN.cs
@@ -200,12 +267,15 @@ Smart_X/
 
 # Sensor Management
 
-Sensors contain information such as:
+Sensors represent the devices registered and managed by the Smart X system.
 
-* MAC address / unique identifier
-* Deployment location
-* Node ID
-* Sensor category
+Each sensor contains identifying and configuration information, including:
+
+- MAC address / unique hardware identifier
+- Deployment location
+- Node ID
+- Sensor category
+- Enabled or disabled state
 
 The supported sensor categories are:
 
@@ -217,65 +287,39 @@ Actuator
 
 The API validates sensor registrations before adding them to the system.
 
-Duplicate Node IDs and duplicate MAC addresses are rejected.
+Validation includes:
+
+- Required registration information
+- Valid sensor identifiers
+- Duplicate Node ID detection
+- Duplicate MAC address detection
+- Sensor category validation
+
+Duplicate Node IDs and duplicate MAC addresses are rejected to prevent conflicting device registrations.
 
 ---
 
 # Payload Simulation
 
-The Smart X UI provides a sensor payload management interface.
+The Smart X UI provides a sensor payload management interface for generating and monitoring simulated sensor activity.
+
+This functionality allows the system to be tested without requiring physical sensor hardware.
 
 The general workflow is:
 
-1. Start Smart X.
-2. Register a sensor.
-3. Select the registered sensor.
-4. Start payload simulation.
-5. The Python simulator communicates with the API.
-6. Simulated sensor activity is generated.
+1. Start the Smart X API.
+2. Start the Smart X desktop application.
+3. Register a sensor through the UI.
+4. Select the registered sensor.
+5. Configure and start the Python sensor simulator.
+6. The simulator generates readings for enabled sensors.
+7. The Python simulator submits telemetry to the API using HTTP requests.
+8. The API receives and processes the submitted measurements.
+9. The desktop application retrieves and displays the available sensor information.
 
-This allows the system to be tested without physical sensor hardware.
+The simulator supports multiple measurement categories, including temperature, humidity, power consumption, air quality, pressure, light, motion, and relay activity.
 
----
-
-# Attachment Management
-
-Smart X supports attachments associated with individual sensors.
-
-Supported file extensions include:
-
-```text
-.txt
-.log
-.cfg
-.conf
-.ini
-.json
-.xml
-.yaml
-.yml
-.csv
-.jpg
-.jpeg
-.png
-.webp
-.pdf
-```
-
-The maximum attachment size is:
-
-```text
-50 MB
-```
-
-Attachments can be:
-
-* Uploaded
-* Listed
-* Downloaded
-* Deleted
-
-The API validates the uploaded file before storing it.
+This provides a controlled environment for testing sensor communication, telemetry handling, and device behaviour.
 
 ---
 
@@ -285,15 +329,15 @@ The **Real-Time Command Stream** page provides a dashboard for monitoring sensor
 
 The page includes:
 
-* Dashboard metrics and device insights
-* Device search and filtering
-* Filtering by operational category and device or alert state
-* Device monitoring and manual control actions
-* Command history with filtering
-* CSV export of command history
-* Periodic API refresh
-* An Undo Command panel
-* A Priority Alert Queue panel
+- Dashboard metrics and device insights
+- Device search and filtering
+- Filtering by operational category and device or alert state
+- Device monitoring and manual control actions
+- Command history with filtering
+- CSV export of command history
+- Periodic API refresh
+- An Undo Command panel
+- A Priority Alert Queue panel
 
 The page retrieves sensor and command information from the API, alongside recommendations, active alerts, and disconnected-device information.
 
@@ -327,9 +371,9 @@ Undo currently applies to the API's recorded state. It should not be considered 
 
 The dashboard includes a Priority Alert Queue panel that:
 
-* Displays the pending alert count
-* Requests the next alert for processing
-* Displays recently processed alerts
+- Displays the pending alert count
+- Requests the next alert for processing
+- Displays recently processed alerts
 
 The queue service uses a priority queue for alerts and a queue for telemetry items. Alert priority ordering is configured so that higher numeric priority values are intended to be processed first.
 
@@ -355,27 +399,25 @@ The base URL shown here is the local development address. Use the base URL confi
 /api/Sensors
 ```
 
----
+### Sensor Endpoints
 
-## Sensor Endpoints
-
-| Method   | Endpoint                | Description                       |
-| -------- | ----------------------- | --------------------------------- |
-| `GET`    | `/api/Sensors`          | Retrieves all registered sensors  |
-| `GET`    | `/api/Sensors/{nodeId}` | Retrieves a specific sensor       |
-| `POST`   | `/api/Sensors`          | Registers a new sensor            |
-| `DELETE` | `/api/Sensors/{nodeId}` | Deletes a sensor                  |
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/Sensors` | Retrieves all registered sensors |
+| `GET` | `/api/Sensors/{nodeId}` | Retrieves a specific sensor |
+| `POST` | `/api/Sensors` | Registers a new sensor |
+| `DELETE` | `/api/Sensors/{nodeId}` | Deletes a sensor |
 
 ---
 
 ## Attachment Endpoints
 
-| Method   | Endpoint                                            | Description                         |
-| -------- | --------------------------------------------------- | ----------------------------------- |
-| `GET`    | `/api/Sensors/{nodeId}/attachments`                | Retrieves attachments for a sensor |
-| `POST`   | `/api/Sensors/{nodeId}/attachments`                | Uploads an attachment               |
-| `GET`    | `/api/Sensors/{nodeId}/attachments/{attachmentId}` | Downloads an attachment            |
-| `DELETE` | `/api/Sensors/{nodeId}/attachments/{attachmentId}` | Deletes an attachment              |
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/Sensors/{nodeId}/attachments` | Retrieves attachments for a sensor |
+| `POST` | `/api/Sensors/{nodeId}/attachments` | Uploads an attachment |
+| `GET` | `/api/Sensors/{nodeId}/attachments/{attachmentId}` | Downloads an attachment |
+| `DELETE` | `/api/Sensors/{nodeId}/attachments/{attachmentId}` | Deletes an attachment |
 
 `attachmentId` is a GUID identifying the attachment.
 
@@ -385,24 +427,24 @@ The base URL shown here is the local development address. Use the base URL confi
 
 The Real-Time Command Stream frontend calls the following routes in the current implementation:
 
-| Method | Endpoint                         | Description |
-| ------ | -------------------------------- | ----------- |
-| `GET`  | `/api/Commands`                  | Retrieves command history |
-| `GET`  | `/api/Insights/recommendations`  | Retrieves device recommendations |
-| `GET`  | `/api/Insights/alerts`            | Retrieves active alerts |
-| `GET`  | `/api/Insights/disconnected`      | Retrieves disconnected-device information |
-| `GET`  | `/api/Commands/undo/available`    | Checks whether an undo operation is available |
-| `POST` | `/api/Commands/undo`              | Requests an undo of the latest supported command |
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/Commands` | Retrieves command history |
+| `GET` | `/api/Insights/recommendations` | Retrieves device recommendations |
+| `GET` | `/api/Insights/alerts` | Retrieves active alerts |
+| `GET` | `/api/Insights/disconnected` | Retrieves disconnected-device information |
+| `GET` | `/api/Commands/undo/available` | Checks whether an undo operation is available |
+| `POST` | `/api/Commands/undo` | Requests an undo of the latest supported command |
 
 ---
 
 ## Priority Alert Queue Endpoints
 
-| Method | Endpoint                  | Description |
-| ------ | ------------------------- | ----------- |
-| `POST` | `/api/AlertQueue`          | Adds an alert to the queue |
-| `GET`  | `/api/AlertQueue/next`     | Removes and returns the next alert, or returns `204 No Content` when no alert is available |
-| `GET`  | `/api/AlertQueue/status`   | Returns pending alert and telemetry counts |
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/AlertQueue` | Adds an alert to the queue |
+| `GET` | `/api/AlertQueue/next` | Removes and returns the next alert, or returns `204 No Content` when no alert is available |
+| `GET` | `/api/AlertQueue/status` | Returns pending alert and telemetry counts |
 
 These command, insight, undo, and alert-queue endpoints must exist in the running API for the corresponding UI features to work. Check the API controller routes if the deployed implementation differs.
 
@@ -496,15 +538,15 @@ The API performs server-side validation when sensors are registered.
 
 The following information is required:
 
-* MAC address / unique identifier
-* Location
-* Node ID
-* Category
+- MAC address / unique identifier
+- Location
+- Node ID
+- Category
 
 The API also checks for duplicate:
 
-* Node IDs
-* MAC addresses / unique identifiers
+- Node IDs
+- MAC addresses / unique identifiers
 
 Invalid categories are rejected.
 
@@ -516,20 +558,20 @@ Power Consumption
 Actuator
 ```
 
-Command requests must also be validated by the API. The target sensor or device must exist and the requested command must be supported for that device.
+Command requests must also be validated by the API. The target sensor or device must exist, and the requested command must be supported for that device.
 
 ---
 
 # HTTP Status Codes
 
-| Status Code       | Description                                  |
-| ----------------- | -------------------------------------------- |
-| `200 OK`          | Request completed successfully               |
-| `201 Created`     | Resource was successfully created            |
-| `204 No Content`  | Request completed without a response body, or a resource was successfully deleted |
-| `400 Bad Request` | Request failed validation                    |
-| `404 Not Found`   | Requested resource does not exist            |
-| `409 Conflict`    | Resource conflicts with an existing resource |
+| Status Code | Description |
+|---|---|
+| `200 OK` | Request completed successfully |
+| `201 Created` | Resource was successfully created |
+| `204 No Content` | Request completed without a response body, or a resource was successfully deleted |
+| `400 Bad Request` | Request failed validation |
+| `404 Not Found` | Requested resource does not exist |
+| `409 Conflict` | Resource conflicts with an existing resource |
 
 Specific endpoints may return additional status codes depending on their implementation.
 
@@ -541,11 +583,11 @@ Uploaded files are validated before being stored.
 
 The API checks:
 
-* Whether a file was supplied
-* Whether the file is empty
-* File size
-* File extension
-* Whether the associated sensor exists
+- Whether a file was supplied
+- Whether the file is empty
+- File size
+- File extension
+- Whether the associated sensor exists
 
 The maximum permitted file size is:
 
@@ -563,11 +605,11 @@ The C# implementation uses object-oriented programming principles.
 
 The application separates responsibilities between different components, including:
 
-* Models
-* Controllers
-* Services
-* UI components
-* API communication
+- Models
+- Controllers
+- Services
+- UI components
+- API communication
 
 Models represent application data, controllers handle HTTP requests, services provide supporting functionality, and the Avalonia UI provides the client-side interface.
 
@@ -587,16 +629,14 @@ dotnet RUN.cs
 
 This is the primary method for running the project.
 
----
-
 ## Requirements
 
 Before running Smart X, ensure the following are installed:
 
-* .NET SDK
-* Python 3
-* Docker Desktop
-* Git
+- .NET SDK
+- Python 3
+- Docker Desktop
+- Git
 
 The Python environment must also have the required Python dependencies installed.
 
@@ -644,14 +684,14 @@ The startup process is:
 
 ```text
 RUN.cs
-  │
-  ├── Smart X API
-  │
-  ├── Docker
-  │
-  ├── Smart X UI
-  │
-  └── Python Sensor Simulator
+  |
+  +-- Smart X API
+  |
+  +-- Docker
+  |
+  +-- Smart X UI
+  |
+  +-- Python Sensor Simulator
 ```
 
 The API is available on:
@@ -718,10 +758,10 @@ The system can be tested through several components.
 
 The REST API can be tested using:
 
-* cURL
-* Postman
-* Python `requests`
-* Smart X UI
+- cURL
+- Postman
+- Python `requests`
+- Smart X UI
 
 Example:
 
@@ -766,38 +806,38 @@ A typical command and alert test consists of:
 
 ```text
 Start Application
-       │
-       ▼
+       |
+       v
 dotnet RUN.cs
-       │
-       ▼
+       |
+       v
 Register Sensor
-       │
-       ▼
+       |
+       v
 Sensor Added to API
-       │
-       ▼
+       |
+       v
 Sensor Displayed in UI
-       │
-       ▼
+       |
+       v
 Start Python Simulator
-       │
-       ▼
+       |
+       v
 Simulator Discovers Sensor
-       │
-       ▼
+       |
+       v
 Simulated Sensor Activity
-       │
-       ▼
+       |
+       v
 Monitor Devices and Insights
-       │
-       ▼
+       |
+       v
 Issue Manual Command
-       │
-       ▼
+       |
+       v
 Review Command History
-       │
-       ▼
+       |
+       v
 Process Priority Alert
 ```
 
@@ -805,11 +845,11 @@ Process Priority Alert
 
 # Current Limitations
 
-* Command undo depends on the prior state recorded by the API and does not guarantee reversal of a physical hardware action.
-* In-memory command, undo, telemetry, and alert-queue state may be lost when the API process restarts.
-* The alert queue UI displays the pending count and recently processed alerts. Listing all pending alerts without removing them would require a separate read-only endpoint.
-* A successful HTTP response does not by itself prove that a physical sensor or actuator completed an operation. Real hardware integration and device acknowledgement must be verified separately.
-* The API base URL and routes used by the UI must match the running backend configuration.
+- Command undo depends on the prior state recorded by the API and does not guarantee reversal of a physical hardware action.
+- In-memory command, undo, telemetry, and alert-queue state may be lost when the API process restarts.
+- The alert queue UI displays the pending count and recently processed alerts. Listing all pending alerts without removing them would require a separate read-only endpoint.
+- A successful HTTP response does not by itself prove that a physical sensor or actuator completed an operation. Real hardware integration and device acknowledgement must be verified separately.
+- The API base URL and routes used by the UI must match the running backend configuration.
 
 ---
 
@@ -817,23 +857,23 @@ Process Priority Alert
 
 This project demonstrates practical use of:
 
-* C#
-* ASP.NET Core
-* Avalonia UI
-* XAML
-* Python
-* REST APIs
-* HTTP communication
-* JSON
-* Docker
-* File handling
-* Input validation
-* Object-oriented programming
-* Client-server architecture
-* Device command handling
-* Priority queues and telemetry queues
-* Git and GitHub
+- C#
+- ASP.NET Core
+- Avalonia UI
+- XAML
+- Python
+- REST APIs
+- HTTP communication
+- JSON
+- Docker
+- File handling
+- Input validation
+- Object-oriented programming
+- Client-server architecture
+- Device command handling
+- Priority queues and telemetry queues
+- Git and GitHub
 
-__________________________________________________
+---
 
-Readme Generated with Assistance from ChatGPT | By providing link to GitHub then asking it to create a Readme.md
+*README generated with assistance from ChatGPT. GitHub repository link provided to assist with README creation.*
