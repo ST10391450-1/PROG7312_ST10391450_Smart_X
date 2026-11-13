@@ -1,3 +1,4 @@
+
 <Window
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -141,8 +142,7 @@
 
                         <Grid ColumnDefinitions="*,Auto">
 
-                            <StackPanel
-                                Spacing="3">
+                            <StackPanel Spacing="3">
 
                                 <TextBlock
                                     Text="SYSTEM MODULES"
@@ -164,7 +164,7 @@
                                 VerticalAlignment="Center">
 
                                 <TextBlock
-                                    Text="1 ACTIVE"
+                                    Text="3 ACTIVE"
                                     FontSize="9"
                                     FontWeight="Bold"
                                     Foreground="#35B86B"/>
@@ -266,7 +266,9 @@
                         </Button>
 
                         <Button
-                            IsEnabled="False"
+                            x:Name="NetworkTopologyButton"
+                            Click="NetworkTopology_Click"
+                            IsEnabled="True"
                             HorizontalContentAlignment="Stretch"
                             MinHeight="86">
 
@@ -281,21 +283,34 @@
                                         Text="Network Topology and Mesh Routing"
                                         FontSize="14"
                                         FontWeight="SemiBold"
-                                        Foreground="#526777"/>
+                                        Foreground="#E8F0F5"/>
 
                                     <TextBlock
-                                        Text="Manage connected nodes and routing"
+                                        Text="Manage connected nodes and analyse efficient routing paths"
                                         FontSize="11"
-                                        Foreground="#526777"/>
+                                        Foreground="#70899B"
+                                        TextWrapping="Wrap"/>
                                 </StackPanel>
 
-                                <TextBlock
+                                <StackPanel
                                     Grid.Column="1"
-                                    Text="UNAVAILABLE"
-                                    FontSize="9"
-                                    FontWeight="Bold"
-                                    Foreground="#506575"
-                                    VerticalAlignment="Center"/>
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Right"
+                                    Spacing="6">
+
+                                    <TextBlock
+                                        Text="AVAILABLE"
+                                        FontSize="9"
+                                        FontWeight="Bold"
+                                        Foreground="#35B86B"
+                                        HorizontalAlignment="Right"/>
+
+                                    <Ellipse
+                                        Width="7"
+                                        Height="7"
+                                        Fill="#35B86B"
+                                        HorizontalAlignment="Right"/>
+                                </StackPanel>
                             </Grid>
                         </Button>
 
@@ -374,8 +389,7 @@
                                     Grid.Row="2"
                                     ColumnDefinitions="*,*">
 
-                                    <StackPanel
-                                        Spacing="3">
+                                    <StackPanel Spacing="3">
 
                                         <TextBlock
                                             Text="STATUS"

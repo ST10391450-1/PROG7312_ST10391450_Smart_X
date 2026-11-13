@@ -46,6 +46,7 @@ public partial class MainWindow : Window
         RegisterPage("SensorCategories", CreateCategoryManagement);
         RegisterPage("AddLocation", CreateAddLocation);
         RegisterPage("AddSensor", CreateAddSensor);
+        RegisterPage("NetworkTopology", CreateNetworkTopology);
 
         _ = CheckApiConnectionAsync();
     }
@@ -60,6 +61,26 @@ public partial class MainWindow : Window
         return key.Equals("AddSensor", StringComparison.OrdinalIgnoreCase)
             || key.Equals("AddLocation", StringComparison.OrdinalIgnoreCase);
     }
+    private Control CreateNetworkTopology()
+    {
+        var topologyPage = new NetworkTopologyView();
+
+        topologyPage.BackRequested += NetworkTopology_BackRequested;
+
+        return topologyPage;
+    }
+    private void NetworkTopology_BackRequested(
+    object? sender,
+    EventArgs e)
+    {
+        ShowHome();
+    }
+
+    private void NetworkTopology_Click(object? sender, RoutedEventArgs e)
+    {
+        NavigateTo("NetworkTopology");
+    }
+
 
     private Control CreateDashboard()
     {

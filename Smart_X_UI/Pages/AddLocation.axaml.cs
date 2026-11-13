@@ -1,10 +1,10 @@
 ﻿
-
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Smart_X_UI.Services;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -18,6 +18,8 @@ public partial class AddLocation : UserControl
         new(ApiClient.HttpClient);
 
     private readonly List<string> _locations = new();
+
+    private bool _isSubmitting;
 
     #endregion
 
@@ -42,7 +44,6 @@ public partial class AddLocation : UserControl
 
     #region Locations
 
-    // Loads the existing deployment locations.
     private async Task LoadLocationsAsync()
     {
         try
@@ -51,8 +52,11 @@ public partial class AddLocation : UserControl
                 await _locationService.GetLocationsAsync();
 
             _locations.Clear();
-            _locations.AddRange(locations);
 
+            _locations.AddRange(
+                locations.Distinct(StringComparer.OrdinalIgnoreCase));
+
+            ParentLocationComboBox.ItemsSource = null;
             ParentLocationComboBox.ItemsSource = _locations;
         }
         catch (Exception ex)
@@ -63,7 +67,6 @@ public partial class AddLocation : UserControl
         }
     }
 
-    // Updates the preview when the location name changes.
     private void LocationNameTextBox_TextChanged(
         object? sender,
         TextChangedEventArgs e)
@@ -74,7 +77,6 @@ public partial class AddLocation : UserControl
         UpdateLocationPreview();
     }
 
-    // Updates the preview when the parent location changes.
     private void ParentLocationComboBox_SelectionChanged(
         object? sender,
         SelectionChangedEventArgs e)
@@ -82,7 +84,6 @@ public partial class AddLocation : UserControl
         UpdateLocationPreview();
     }
 
-    // Shows the full location path before it is added.
     private void UpdateLocationPreview()
     {
         var name =
@@ -112,11 +113,15 @@ public partial class AddLocation : UserControl
 
     #region Adding Locations
 
-    // Validates and adds the new location.
     private async void AddLocationButton_Click(
         object? sender,
         RoutedEventArgs e)
     {
+        if (_isSubmitting)
+            return;
+
+        _isSubmitting = true;
+
         var addButton = sender as Button;
 
         if (addButton != null)
@@ -142,8 +147,7 @@ public partial class AddLocation : UserControl
                 return;
             }
 
-            if (name.Contains('/') ||
-                name.Contains('\\'))
+            if (name.Contains('/') || name.Contains('\\'))
             {
                 LocationNameErrorText.Text =
                     "Location name cannot contain / or \\.";
@@ -154,12 +158,36 @@ public partial class AddLocation : UserControl
                 return;
             }
 
+            if (!string.IsNullOrWhiteSpace(parent))
+            {
+                var parentName = parent
+                    .Split(
+                        '/',
+                        StringSplitOptions.RemoveEmptyEntries |
+                        StringSplitOptions.TrimEntries)
+                    .LastOrDefault();
+
+                if (string.Equals(
+                        parentName,
+                        name,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    ShowStatus(
+                        "A location cannot have the same name as its parent.",
+                        true);
+
+                    return;
+                }
+            }
+
             var location =
                 string.IsNullOrWhiteSpace(parent)
                     ? name
                     : $"{parent} / {name}";
 
-            var alreadyExists = _locations.Exists(existing =>
+            await LoadLocationsAsync();
+
+            var alreadyExists = _locations.Any(existing =>
                 string.Equals(
                     existing,
                     location,
@@ -180,11 +208,18 @@ public partial class AddLocation : UserControl
                 $"Location added successfully: {location}",
                 false);
 
+            LocationNameTextBox.Clear();
+            ParentLocationComboBox.SelectedItem = null;
+
+            LocationNameErrorText.IsVisible = false;
+
+            await LoadLocationsAsync();
+
+            UpdateLocationPreview();
+
             LocationAdded?.Invoke(
                 this,
                 EventArgs.Empty);
-
-            await LoadLocationsAsync();
         }
         catch (HttpRequestException ex)
         {
@@ -206,6 +241,8 @@ public partial class AddLocation : UserControl
         }
         finally
         {
+            _isSubmitting = false;
+
             if (addButton != null)
                 addButton.IsEnabled = true;
         }
@@ -215,7 +252,6 @@ public partial class AddLocation : UserControl
 
     #region Form
 
-    // Clears the location form.
     private void ClearButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -235,7 +271,6 @@ public partial class AddLocation : UserControl
 
     #region Navigation
 
-    // Returns to the previous page.
     private void BackButton_Click(
         object? sender,
         RoutedEventArgs e)
@@ -249,7 +284,6 @@ public partial class AddLocation : UserControl
 
     #region Status
 
-    // Shows a success or error message.
     private void ShowStatus(
         string message,
         bool isError)

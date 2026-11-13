@@ -1,6 +1,8 @@
-﻿using Smart_X_UI.Models;
+﻿
+using Smart_X_UI.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
@@ -10,13 +12,13 @@ namespace Smart_X_UI.Services;
 public class LocationService
 {
     private readonly HttpClient _httpClient;
+    private bool _isAddingLocation;
 
     public LocationService(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
 
-    // Gets all locations from the API as full location path
     public async Task<List<string>> GetLocationsAsync()
     {
         var locations = await _httpClient.GetFromJsonAsync<List<DeploymentLocation>>(
@@ -32,7 +34,6 @@ public class LocationService
         return result;
     }
 
-    // Adds a location and its children to the result list.
     private void AddLocationNames(
         DeploymentLocation location,
         string parentPath,
@@ -45,94 +46,62 @@ public class LocationService
         if (!string.IsNullOrWhiteSpace(currentPath))
             result.Add(currentPath);
 
+        if (location.Children == null)
+            return;
+
         foreach (var child in location.Children)
         {
             AddLocationNames(child, currentPath, result);
         }
     }
 
-    // Builds a location tree and sends it to the API.
     public async Task AddLocationAsync(string location)
     {
-        var parts = location.Split(
-            '/',
-            StringSplitOptions.RemoveEmptyEntries |
-            StringSplitOptions.TrimEntries);
+        if (_isAddingLocation)
+            throw new InvalidOperationException(
+                "A location is already being added.");
 
-        if (parts.Length == 0)
+        _isAddingLocation = true;
+
+        try
         {
-            throw new ArgumentException(
-                "Location cannot be empty.",
-                nameof(location));
+            var root = BuildLocationTree(location);
+
+            if (!await ValidateLocationAsync(location))
+                throw new InvalidOperationException(
+                    "The location already exists or its hierarchy is invalid.");
+
+            using var response = await _httpClient.PostAsJsonAsync(
+                "api/Locations",
+                root);
+
+            response.EnsureSuccessStatusCode();
         }
-
-        var root = new DeploymentLocation
+        finally
         {
-            Name = parts[0],
-            Type = "Location",
-            IsConfigured = false
-        };
-
-        var current = root;
-
-        for (var i = 1; i < parts.Length; i++)
-        {
-            var child = new DeploymentLocation
-            {
-                Name = parts[i],
-                Type = "Location",
-                IsConfigured = false
-            };
-
-            current.Children.Add(child);
-            current = child;
+            _isAddingLocation = false;
         }
-
-        using var response = await _httpClient.PostAsJsonAsync(
-            "api/Locations",
-            root);
-
-        response.EnsureSuccessStatusCode();
     }
 
-    // Checks whether a location is valid.
-    public async Task<bool> ValidateLocationAsync(string  location)
+    public async Task<bool> ValidateLocationAsync(string location)
     {
-        var parts = location.Split(
-            '/',
-            StringSplitOptions.RemoveEmptyEntries |
-            StringSplitOptions.TrimEntries);
+        DeploymentLocation root;
 
-        if (parts.Length == 0)
+        try
+        {
+            root = BuildLocationTree(location);
+        }
+        catch (ArgumentException)
+        {
             return false;
-
-        var root = new DeploymentLocation
-        {
-            Name = parts[0],
-            Type = "Location",
-            IsConfigured = false
-        };
-
-        var current = root;
-
-        for (var i = 1; i < parts.Length; i++)
-        {
-            var child = new DeploymentLocation
-            {
-                Name = parts[i],
-                Type = "Location",
-                IsConfigured = false
-            };
-
-            current.Children.Add(child);
-            current = child;
         }
 
         using var response = await _httpClient.PostAsJsonAsync(
             "api/Locations/validate",
             root);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+            return false;
 
         var result = await response.Content
             .ReadFromJsonAsync<LocationValidationResponse>();
@@ -140,9 +109,46 @@ public class LocationService
         return result?.Valid ?? false;
     }
 
+    private static DeploymentLocation BuildLocationTree(string location)
+    {
+        if (string.IsNullOrWhiteSpace(location))
+            throw new ArgumentException("Location cannot be empty.");
+
+        var parts = location.Split(
+            '/',
+            StringSplitOptions.RemoveEmptyEntries |
+            StringSplitOptions.TrimEntries);
+
+        if (parts.Length == 0 || parts.Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException("Invalid location.");
+
+        var root = new DeploymentLocation
+        {
+            Name = parts[0],
+            Type = "Location",
+            IsConfigured = false
+        };
+
+        var current = root;
+
+        for (var i = 1; i < parts.Length; i++)
+        {
+            var child = new DeploymentLocation
+            {
+                Name = parts[i],
+                Type = "Location",
+                IsConfigured = false
+            };
+
+            current.Children.Add(child);
+            current = child;
+        }
+
+        return root;
+    }
+
     private class LocationValidationResponse
     {
         public bool Valid { get; set; }
     }
 }
-

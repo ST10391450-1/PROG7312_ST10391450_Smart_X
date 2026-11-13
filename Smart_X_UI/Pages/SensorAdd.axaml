@@ -1,4 +1,4 @@
-<UserControl
+﻿<UserControl
     xmlns="https://github.com/avaloniaui"
     xmlns:models="using:Smart_X_UI.Models"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -115,11 +115,19 @@
 
                 </StackPanel>
 
-                <Button Grid.Column="1"
-                        Content="←  Back"
-                        Classes="back"
-                        Click="BackButton_Click"
-                        VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="10"
+                            VerticalAlignment="Center">
+
+                    <Button x:Name="ImportJsonButton"
+                            Content="⇪  Import JSON"
+                            Click="ImportJsonButton_Click"/>
+
+                    <Button Content="←  Back"
+                            Classes="back"
+                            Click="BackButton_Click"/>
+                </StackPanel>
 
             </Grid>
 
